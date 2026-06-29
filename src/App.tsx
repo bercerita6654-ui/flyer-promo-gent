@@ -32,6 +32,7 @@ import FlyerMockup from './components/FlyerMockup';
 import PromptHistory from './components/PromptHistory';
 import Toast from './components/Toast';
 import { useSystemTheme } from './hooks/useSystemTheme';
+import ProductSearchInput from './components/ProductSearchInput';
 
 export default function App() {
   const systemTheme = useSystemTheme();
@@ -429,14 +430,16 @@ export default function App() {
                   <label htmlFor="productName" className="block text-xs font-semibold text-slate-300 mb-2 tracking-wider uppercase">
                     Nama / Jenis Produk <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <input
-                    type="text"
-                    id="productName"
+                  <ProductSearchInput
                     value={input.productName}
-                    onChange={(e) => handleInputChange('productName', e.target.value)}
-                    placeholder="Contoh: Kopi Susu Gula Aren, Sabun Mandi Lavender..."
-                    className="w-full px-4 py-3 bg-[#06080e] border border-slate-850 hover:border-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 placeholder-slate-700 text-sm transition-all outline-none shadow-inner"
-                    required
+                    onChange={(val) => handleInputChange('productName', val)}
+                    onSelectProduct={(prod, brand) => {
+                      setInput((prev) => ({
+                        ...prev,
+                        productName: prod,
+                        brandName: brand || prev.brandName,
+                      }));
+                    }}
                   />
                 </div>
               </div>

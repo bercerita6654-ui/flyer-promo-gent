@@ -22,6 +22,114 @@ async function startServer() {
     }
   });
 
+  // Products Caching and CSV parsing logic for Google Sheet STOCK LIST
+  let cachedProducts: Array<{ sku: string, product: string, brand: string }> = [];
+  let lastFetchTime = 0;
+  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
+  function cleanCsvValue(val: string): string {
+    return val.trim().replace(/^"|"$/g, '').trim();
+  }
+
+  async function getProducts() {
+    const now = Date.now();
+    if (cachedProducts.length > 0 && (now - lastFetchTime < CACHE_TTL)) {
+      return cachedProducts;
+    }
+
+    try {
+      console.log("Fetching fresh products list from Google Sheets...");
+      const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch CSV from Google Sheet');
+      
+      const text = await response.text();
+      const lines = text.split('\n');
+      const items: Array<{ sku: string, product: string, brand: string }> = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.trim() === "") continue;
+        
+        const cols = parseCsvLine(line);
+        const sku = cols[0];     // Column 1 (index 0)
+        const product = cols[2]; // Column 3 (index 2)
+        const brand = cols[6];   // Column 7 (index 6)
+        
+        if (product && product.trim() !== "" && product !== 'Description') {
+          items.push({
+            sku: cleanCsvValue(sku || ''),
+            product: cleanCsvValue(product),
+            brand: cleanCsvValue(brand || '')
+          });
+        }
+      }
+
+      console.log(`Successfully cached ${items.length} products.`);
+      cachedProducts = items;
+      lastFetchTime = now;
+      return cachedProducts;
+    } catch (err) {
+      console.error('Error fetching products from Google Sheet:', err);
+      return cachedProducts; // fallback to stale cache
+    }
+  }
+
+  // Search Endpoint
+  app.get("/api/products/search", async (req, res) => {
+    try {
+      const q = (req.query.q as string || '').toLowerCase().trim();
+      const products = await getProducts();
+      
+      if (!q) {
+        // Return first 50 default products if query is empty
+        return res.json(products.slice(0, 50));
+      }
+      
+      const words = q.split(/\s+/).filter(Boolean);
+      const filtered = products.filter(item => {
+        const prodLower = item.product.toLowerCase();
+        const brandLower = item.brand.toLowerCase();
+        const skuLower = item.sku.toLowerCase();
+        return words.every(word => 
+          prodLower.includes(word) || 
+          brandLower.includes(word) || 
+          skuLower.includes(word)
+        );
+      });
+      
+      return res.json(filtered.slice(0, 100));
+    } catch (error: any) {
+      console.error("Search API Error:", error);
+      return res.status(500).json({ error: "Failed to search products" });
+    }
+  });
+
   // API Routes
   app.post("/api/enhance-prompt", async (req, res) => {
     try {
