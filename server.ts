@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
 
 dotenv.config();
 
@@ -26,6 +27,18 @@ async function startServer() {
   let cachedProducts: Array<{ sku: string, product: string, brand: string }> = [];
   let lastFetchTime = 0;
   const CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+
+  // Preload from local fallback file on startup so we are never empty
+  try {
+    const fallbackPath = path.join(process.cwd(), "fallback-products.json");
+    if (fs.existsSync(fallbackPath)) {
+      const dataStr = fs.readFileSync(fallbackPath, "utf8");
+      cachedProducts = JSON.parse(dataStr);
+      console.log(`Preloaded ${cachedProducts.length} fallback products successfully.`);
+    }
+  } catch (preloadErr) {
+    console.error("Failed to preload fallback products:", preloadErr);
+  }
 
   function parseCsvLine(line: string): string[] {
     const result: string[] = [];
@@ -58,15 +71,20 @@ async function startServer() {
 
   async function getProducts() {
     const now = Date.now();
-    if (cachedProducts.length > 0 && (now - lastFetchTime < CACHE_TTL)) {
+    // If we have loaded products and fetched within TTL, reuse them.
+    if (cachedProducts.length > 0 && lastFetchTime > 0 && (now - lastFetchTime < CACHE_TTL)) {
       return cachedProducts;
     }
 
     try {
       console.log("Fetching fresh products list from Google Sheets...");
       const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch CSV from Google Sheet');
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      if (!response.ok) throw new Error(`Failed to fetch CSV from Google Sheet, status: ${response.status}`);
       
       const text = await response.text();
       const lines = text.split('\n');
@@ -90,13 +108,22 @@ async function startServer() {
         }
       }
 
-      console.log(`Successfully cached ${items.length} products.`);
+      console.log(`Successfully cached ${items.length} fresh products from Google Sheets.`);
       cachedProducts = items;
       lastFetchTime = now;
+
+      // Update fallback file so we keep the local file fresh
+      try {
+        const fallbackPath = path.join(process.cwd(), "fallback-products.json");
+        fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
+      } catch (errWrite) {
+        console.error("Failed to write to fallback-products.json:", errWrite);
+      }
+
       return cachedProducts;
     } catch (err) {
-      console.error('Error fetching products from Google Sheet:', err);
-      return cachedProducts; // fallback to stale cache
+      console.error('Error fetching products from Google Sheet (using fallback/cached data):', err);
+      return cachedProducts; // fallback to preloaded / cached products
     }
   }
 
@@ -107,8 +134,8 @@ async function startServer() {
       const products = await getProducts();
       
       if (!q) {
-        // Return first 50 default products if query is empty
-        return res.json(products.slice(0, 50));
+        // Return first 100 default products if query is empty
+        return res.json(products.slice(0, 100));
       }
       
       const words = q.split(/\s+/).filter(Boolean);
