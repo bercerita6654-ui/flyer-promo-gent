@@ -54,7 +54,7 @@ export function generateIndoPrompt(input: PromptInput): string {
 ${arText}. 
 Komposisi: 80% visual fotorealistik berkualitas tinggi dan 20% ruang teks kosong (negative space) bersih untuk penempatan promo. 
 Layout Utama: Modern grid-based infographic layout (tata letak kotak-panel rapi). 
-Bagian Atas: Menampilkan wujud produk utama "${input.productName}" beserta visual kemasannya (${input.packagingInfo}) yang terlihat premium, besar, dan sangat detail. 
+Bagian Atas: Menampilkan wujud produk utama "${input.productName}" (${input.packagingInfo}) yang terlihat premium, besar, dan sangat detail. 
 Bagian Tengah: Deretan ikon fitur produk, diikuti oleh grid foto-foto kecil yang menunjukkan produk sedang digunakan dalam berbagai skenario sehari-hari secara estetik. 
 Bagian Bawah: Panduan visual langkah-langkah 'How to Use' dengan foto dan kotak daftar 'Keunggulan'. 
 Footer: Baris footer elegan dengan placeholder untuk kontak. 
