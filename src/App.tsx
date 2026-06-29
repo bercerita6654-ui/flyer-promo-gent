@@ -65,6 +65,9 @@ export default function App() {
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [enhanceProgressText, setEnhanceProgressText] = useState<string>('');
   const [isAiEnhanced, setIsAiEnhanced] = useState<boolean>(false);
+  const [generateVariations, setGenerateVariations] = useState<boolean>(false);
+  const [variations, setVariations] = useState<Array<{ style: string; promptEng: string; promptIndo: string }> | null>(null);
+  const [selectedVarIndex, setSelectedVarIndex] = useState<number>(0);
 
   // 2. Load History from Local Storage on mount
   useEffect(() => {
@@ -99,6 +102,7 @@ export default function App() {
   // Whenever product name or packaging changes, reset AI enhanced flag so offline can update, unless it's empty
   useEffect(() => {
     setIsAiEnhanced(false);
+    setVariations(null);
   }, [input.productName, input.packagingInfo, input.brandName, input.cameraAngle, input.lighting, input.backgroundProps, input.colorTheme]);
 
   // 4. Handle Actions
@@ -193,7 +197,10 @@ export default function App() {
       const response = await fetch('/api/enhance-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          generateVariations
+        }),
       });
 
       if (!response.ok) {
@@ -204,7 +211,33 @@ export default function App() {
       const data = await response.json();
       clearInterval(interval);
 
-      if (data.promptEng && data.promptIndo) {
+      if (data.generateVariations && data.variations && data.variations.length > 0) {
+        setVariations(data.variations);
+        setSelectedVarIndex(0);
+        setPromptEng(data.variations[0].promptEng);
+        setPromptIndo(data.variations[0].promptIndo);
+        setIsAiEnhanced(true);
+        setShowResult(true);
+
+        // Save to history
+        const newSaved: SavedPrompt = {
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          input: { ...input },
+          promptIndo: data.variations[0].promptIndo,
+          promptEng: data.variations[0].promptEng,
+          isAiEnhanced: true,
+          variations: data.variations,
+          selectedVarIndex: 0
+        };
+
+        const updatedHistory = [newSaved, ...history.slice(0, 19)];
+        setHistory(updatedHistory);
+        localStorage.setItem('flyer_prompt_history', JSON.stringify(updatedHistory));
+
+        showToastMsg('3 Variasi Prompt Kreatif berhasil dibuat! 🪄', 'success');
+      } else if (data.promptEng && data.promptIndo) {
+        setVariations(null);
         setPromptEng(data.promptEng);
         setPromptIndo(data.promptIndo);
         setIsAiEnhanced(true);
@@ -663,6 +696,44 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Creative Variations Toggle Switch */}
+              <div className="mt-5 p-4 bg-indigo-950/20 border border-indigo-950/40 rounded-2xl flex items-center justify-between gap-4" id="generate-variations-toggle-card">
+                <div className="flex items-start gap-3">
+                  <span className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 mt-0.5">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-display font-bold text-slate-200">Hasilkan 3 Variasi Kreatif sekaligus</h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                      Rancang 3 gaya prompt siap-pakai: <span className="text-indigo-400 font-semibold">Modern Minimalist</span>, <span className="text-purple-400 font-semibold">Cinematic Dramatic</span>, dan <span className="text-fuchsia-400 font-semibold">Bright Commercial</span>.
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGenerateVariations(!generateVariations);
+                    showToastMsg(
+                      !generateVariations 
+                        ? 'Fitur 3 Variasi Aktif! Gemini akan menghasilkan 3 formula prompt sekaligus.' 
+                        : 'Fitur 3 Variasi Dinonaktifkan.', 
+                      'info'
+                    );
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    generateVariations ? 'bg-indigo-600' : 'bg-slate-800'
+                  }`}
+                  id="variations-toggle-switch"
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      generateVariations ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
               {/* ACTION CALL ROW: Traditional Generation & Dual Gemini AI Magic Enhance */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-4">
                 
@@ -794,6 +865,34 @@ export default function App() {
                   </div>
 
                   <div className="space-y-4">
+                    {/* Creative Variations Style Selection Tabs */}
+                    {variations && variations.length > 0 && (
+                      <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-900/80 shadow-inner flex overflow-x-auto gap-1.5" id="variation-tabs-panel">
+                        {variations.map((v, idx) => {
+                          const isActive = selectedVarIndex === idx;
+                          return (
+                            <button
+                              key={v.style}
+                              onClick={() => {
+                                setSelectedVarIndex(idx);
+                                setPromptEng(v.promptEng);
+                                setPromptIndo(v.promptIndo);
+                                showToastMsg(`Menampilkan gaya: ${v.style}`, 'info');
+                              }}
+                              className={`flex-1 min-w-[100px] text-center py-2 px-2.5 rounded-xl text-[10px] font-sans font-extrabold transition-all duration-200 ${
+                                isActive
+                                  ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white shadow-md shadow-indigo-950/40'
+                                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                              }`}
+                              id={`var-tab-${idx}`}
+                            >
+                              {v.style}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Prompt Box display */}
                     <div className="relative group">
                       <textarea

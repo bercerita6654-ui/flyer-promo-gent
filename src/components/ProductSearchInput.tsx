@@ -131,6 +131,12 @@ export default function ProductSearchInput({
             setIsOpen(true);
             fetchSuggestions(value);
           }}
+          onClick={() => {
+            setIsOpen(true);
+            if (suggestions.length === 0) {
+              fetchSuggestions(value);
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Cari SKU atau nama produk dari Stock List..."
           className="w-full pl-10 pr-10 py-3 bg-[#06080e] border border-slate-850 hover:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 placeholder-slate-600 text-sm transition-all outline-none shadow-inner"
@@ -152,7 +158,13 @@ export default function ProductSearchInput({
           )}
           <button
             type="button"
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              const nextOpen = !isOpen;
+              setIsOpen(nextOpen);
+              if (nextOpen && suggestions.length === 0) {
+                fetchSuggestions(value);
+              }
+            }}
             className="p-1 hover:bg-slate-900 rounded-md text-slate-500 hover:text-slate-300 transition-colors"
           >
             <ChevronDown className={`w-3.5 h-3.5 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />

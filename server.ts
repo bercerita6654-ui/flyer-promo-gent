@@ -143,7 +143,8 @@ async function startServer() {
         colorTheme, 
         cameraAngle, 
         lighting, 
-        backgroundProps 
+        backgroundProps,
+        generateVariations
       } = req.body;
 
       if (!productName || !packagingInfo) {
@@ -158,34 +159,68 @@ async function startServer() {
 
       const selectedStyle = styleLabels[designStyle as 'umum' | 'anak' | 'dewasa'] || styleLabels.umum;
 
-      const promptTemplate = `
-      You are an expert AI Image Prompt designer specializing in commercial advertising photography, product flyers, and graphic design layout structure.
-      
-      Generate a highly detailed, professional, and eye-catching image generation prompt based on these details:
-      - Brand Name: ${brandName || "Unspecified Brand"}
-      - Product Name: ${productName}
-      - Packaging Details: ${packagingInfo}
-      - Target Design Style: ${selectedStyle}
-      - Aspect Ratio: ${aspectRatio}
-      - AI Engine: ${aiPlatform}
-      - Colors: ${colorTheme || "harmonious and visually striking"}
-      - Camera Angle: ${cameraAngle || "professional eye-level advertising studio portrait shot"}
-      - Lighting: ${lighting || "professional softbox photography lighting"}
-      - Background Props / Decor: ${backgroundProps || "organic matching decorations"}
+      let promptTemplate = "";
+      if (generateVariations) {
+        promptTemplate = `
+        You are an expert AI Image Prompt designer specializing in commercial advertising photography, product flyers, and graphic design layout structure.
+        
+        Generate THREE (3) distinct, highly detailed, professional creative variations of the same product flyer prompt based on these base details:
+        - Brand Name: ${brandName || "Unspecified Brand"}
+        - Product Name: ${productName}
+        - Packaging Details: ${packagingInfo}
+        - Aspect Ratio: ${aspectRatio}
+        - AI Engine: ${aiPlatform}
+        - Base Colors: ${colorTheme || "harmonious and visually striking"}
 
-      Please construct TWO high-quality prompts:
-      1. "promptEng": An English prompt. Must be rich in sensory descriptive modifiers (such as "octane render, raytracing reflections, photorealistic textures, atmospheric haze, studio catalog composition, depth of field, 8k resolution"). Ensure aspect ratio and platform optimized tags are present.
-      2. "promptIndo": An Indonesian translation / version of this premium prompt, written with professional local copywriting terms, explaining clearly the flyer layout.
+        You must generate exactly these 3 styles of prompt variations:
+        1. "Modern Minimalist": Focus on high-end clean workspace, generous negative space, high-key soft studio lighting, soft color theme, elegant placement, minimalist aesthetic.
+        2. "Cinematic Dramatic": Focus on rich moody lighting (chiaroscuro, rim light, deep contrasts, volumetric fog / particles), dark textured background, dramatic camera angle, high reflections, cinematic catalog feeling.
+        3. "Bright Commercial": Focus on vivid colors, vibrant dynamic elements (splash of liquid, flying organic ingredients, action feeling), bright 3-point studio lighting, extremely energetic, appealing for digital ads.
 
-      Flyer layout guidelines to integrate into the prompts:
-      - Composition: 80% beautiful product focal point with packaging, and 20% clean negative space panels for contact info/text.
-      - Top Section: Majestic display of the main product "${productName}" ${brandName ? `by "${brandName}"` : ""}.
-      - Middle Section: A clean grid showing feature icons, and floating ingredients or interactive action shots.
-      - Bottom Section: Space for step-by-step "how to use" visuals and key benefit cards.
-      - Style requirements: Extremely sharp, realistic, no distorted items, neat margins.
+        For EACH variation, please construct BOTH an English prompt ("promptEng", rich in descriptive tags optimized for ${aiPlatform}) and an Indonesian version ("promptIndo", clean copywriting and layout guidelines).
 
-      Response format MUST be a single raw JSON object with exactly two keys: "promptEng" and "promptIndo". Do not include any markdown fences or explanation before/after.
-      `;
+        Flyer layout guidelines to integrate into the prompts:
+        - Composition: 80% beautiful product focal point with packaging, and 20% clean negative space panels for contact info/text.
+        - Top Section: Majestic display of the main product "${productName}" ${brandName ? `by "${brandName}"` : ""}.
+        - Middle Section: A clean grid showing feature icons, and floating ingredients or interactive action shots.
+        - Bottom Section: Space for step-by-step "how to use" visuals and key benefit cards.
+        - Style requirements: Extremely sharp, realistic, no distorted items, neat margins.
+
+        Response format MUST be a single raw JSON object with a single key "variations" which contains an array of exactly 3 objects.
+        Each object in the array must have exactly these keys: "style", "promptEng", and "promptIndo".
+        "style" must match exactly "Modern Minimalist", "Cinematic Dramatic", or "Bright Commercial".
+        Do not include any markdown fences, backticks, or text before/after the JSON.
+        `;
+      } else {
+        promptTemplate = `
+        You are an expert AI Image Prompt designer specializing in commercial advertising photography, product flyers, and graphic design layout structure.
+        
+        Generate a highly detailed, professional, and eye-catching image generation prompt based on these details:
+        - Brand Name: ${brandName || "Unspecified Brand"}
+        - Product Name: ${productName}
+        - Packaging Details: ${packagingInfo}
+        - Target Design Style: ${selectedStyle}
+        - Aspect Ratio: ${aspectRatio}
+        - AI Engine: ${aiPlatform}
+        - Colors: ${colorTheme || "harmonious and visually striking"}
+        - Camera Angle: ${cameraAngle || "professional eye-level advertising studio portrait shot"}
+        - Lighting: ${lighting || "professional softbox photography lighting"}
+        - Background Props / Decor: ${backgroundProps || "organic matching decorations"}
+
+        Please construct TWO high-quality prompts:
+        1. "promptEng": An English prompt. Must be rich in sensory descriptive modifiers (such as "octane render, raytracing reflections, photorealistic textures, atmospheric haze, studio catalog composition, depth of field, 8k resolution"). Ensure aspect ratio and platform optimized tags are present.
+        2. "promptIndo": An Indonesian translation / version of this premium prompt, written with professional local copywriting terms, explaining clearly the flyer layout.
+
+        Flyer layout guidelines to integrate into the prompts:
+        - Composition: 80% beautiful product focal point with packaging, and 20% clean negative space panels for contact info/text.
+        - Top Section: Majestic display of the main product "${productName}" ${brandName ? `by "${brandName}"` : ""}.
+        - Middle Section: A clean grid showing feature icons, and floating ingredients or interactive action shots.
+        - Bottom Section: Space for step-by-step "how to use" visuals and key benefit cards.
+        - Style requirements: Extremely sharp, realistic, no distorted items, neat margins.
+
+        Response format MUST be a single raw JSON object with exactly two keys: "promptEng" and "promptIndo". Do not include any markdown fences or explanation before/after.
+        `;
+      }
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -198,10 +233,18 @@ async function startServer() {
       const responseText = response.text || "{}";
       const result = JSON.parse(responseText);
 
-      return res.json({
-        promptEng: result.promptEng || "",
-        promptIndo: result.promptIndo || ""
-      });
+      if (generateVariations) {
+        return res.json({
+          generateVariations: true,
+          variations: result.variations || []
+        });
+      } else {
+        return res.json({
+          generateVariations: false,
+          promptEng: result.promptEng || "",
+          promptIndo: result.promptIndo || ""
+        });
+      }
 
     } catch (error: any) {
       console.error("Gemini API Error in server.ts:", error);

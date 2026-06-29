@@ -27,6 +27,8 @@ export interface SavedPrompt {
   promptIndo: string;
   promptEng: string;
   isAiEnhanced?: boolean;
+  variations?: Array<{ style: string; promptEng: string; promptIndo: string }>;
+  selectedVarIndex?: number;
 }
 
 export interface Preset {
