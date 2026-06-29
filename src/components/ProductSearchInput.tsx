@@ -106,7 +106,7 @@ export default function ProductSearchInput({
   };
 
   return (
-    <div className="relative w-full" ref={dropdownRef} id="product-search-input-wrapper">
+    <div className={`relative w-full ${isOpen ? 'z-30' : 'z-10'}`} ref={dropdownRef} id="product-search-input-wrapper">
       <div className="relative flex items-center">
         {/* Search / Database Icon */}
         <span className="absolute left-3.5 text-slate-500 pointer-events-none">

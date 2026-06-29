@@ -380,7 +380,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in" id="app-grid-layout">
           
           {/* LEFT SIDEBAR: Comprehensive Parameters Builder (7 cols) */}
-          <section className="lg:col-span-7 bg-[#0b0f19]/80 border border-slate-900 rounded-3xl p-6 shadow-2xl relative overflow-hidden" id="left-form-panel">
+          <section className="lg:col-span-7 bg-[#0b0f19]/80 border border-slate-900 rounded-3xl p-6 shadow-2xl relative" id="left-form-panel">
             
             {/* Glossy top border line */}
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500/50 via-purple-500/50 to-fuchsia-500/50" />
