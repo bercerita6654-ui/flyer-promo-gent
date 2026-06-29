@@ -1,0 +1,6 @@
+{
+  "name": "Flyer Prompt Generator",
+  "description": "Aplikasi untuk membuat prompt desain flyer iklan profesional yang siap digunakan di Midjourney, DALL-E, atau AI Image Generator lainnya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
