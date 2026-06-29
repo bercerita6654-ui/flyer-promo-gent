@@ -30,11 +30,20 @@ async function startServer() {
 
   // Preload from local fallback file on startup so we are never empty
   try {
-    const fallbackPath = path.join(process.cwd(), "fallback-products.json");
+    let fallbackPath = path.join(process.cwd(), "fallback-products.json");
+    if (!fs.existsSync(fallbackPath)) {
+      fallbackPath = path.join(__dirname, "../fallback-products.json");
+    }
+    if (!fs.existsSync(fallbackPath)) {
+      fallbackPath = path.join(__dirname, "fallback-products.json");
+    }
+
     if (fs.existsSync(fallbackPath)) {
       const dataStr = fs.readFileSync(fallbackPath, "utf8");
       cachedProducts = JSON.parse(dataStr);
-      console.log(`Preloaded ${cachedProducts.length} fallback products successfully.`);
+      console.log(`Preloaded ${cachedProducts.length} fallback products successfully from: ${fallbackPath}`);
+    } else {
+      console.error("Warning: Could not find fallback-products.json in any expected paths.");
     }
   } catch (preloadErr) {
     console.error("Failed to preload fallback products:", preloadErr);
@@ -69,15 +78,14 @@ async function startServer() {
     return val.trim().replace(/^"|"$/g, '').trim();
   }
 
-  async function getProducts() {
-    const now = Date.now();
-    // If we have loaded products and fetched within TTL, reuse them.
-    if (cachedProducts.length > 0 && lastFetchTime > 0 && (now - lastFetchTime < CACHE_TTL)) {
-      return cachedProducts;
-    }
+  let isFetchingBackground = false;
 
+  async function fetchProductsBackground() {
+    if (isFetchingBackground) return;
+    isFetchingBackground = true;
+    
     try {
-      console.log("Fetching fresh products list from Google Sheets...");
+      console.log("Asynchronously fetching fresh products list from Google Sheets...");
       const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
       const response = await fetch(url, {
         headers: {
@@ -108,23 +116,53 @@ async function startServer() {
         }
       }
 
-      console.log(`Successfully cached ${items.length} fresh products from Google Sheets.`);
+      console.log(`Successfully cached ${items.length} fresh products from Google Sheets in background.`);
       cachedProducts = items;
-      lastFetchTime = now;
+      lastFetchTime = Date.now();
 
       // Update fallback file so we keep the local file fresh
       try {
-        const fallbackPath = path.join(process.cwd(), "fallback-products.json");
+        let fallbackPath = path.join(process.cwd(), "fallback-products.json");
+        if (!fs.existsSync(fallbackPath)) {
+          fallbackPath = path.join(__dirname, "../fallback-products.json");
+        }
+        if (!fs.existsSync(fallbackPath)) {
+          fallbackPath = path.join(__dirname, "fallback-products.json");
+        }
         fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
       } catch (errWrite) {
         console.error("Failed to write to fallback-products.json:", errWrite);
       }
-
-      return cachedProducts;
     } catch (err) {
-      console.error('Error fetching products from Google Sheet (using fallback/cached data):', err);
-      return cachedProducts; // fallback to preloaded / cached products
+      console.error('Error fetching products from Google Sheet in background:', err);
+    } finally {
+      isFetchingBackground = false;
     }
+  }
+
+  function getProducts() {
+    const now = Date.now();
+    // If we have no cached products, load the ultimate hardcoded fallback list of 9 items
+    if (cachedProducts.length === 0) {
+      cachedProducts = [
+        { sku: "19163", product: '3M DOUBLE TAPE FOAM INDOOR 1/2" 110-S12 2.8 Kg', brand: "3M" },
+        { sku: "16987", product: '3M DOUBLE TAPE FOAM SCOTCH INDOOR 1" 110-M25 6.0KG', brand: "3M" },
+        { sku: "17627", product: '3M DOUBLE TAPE FOAM SCOTCH INDOOR 1/2" 110-M12 2.8kg (12MM x 4M)', brand: "3M" },
+        { sku: "17626", product: '3M DOUBLE TAPE SCOTCH OUTDOOR 3.3kg 19mm*1.5m ( 411-S19 )', brand: "3M" },
+        { sku: "16772", product: '3M DOUBLE TAPE SIDE MOUNTING CLEAR 1" 410-S19 3.3kg', brand: "3M" },
+        { sku: "07945", product: "ACCO FASTENER BESI POP1", brand: "POP1" },
+        { sku: "09792", product: "ACCO FASTENER PUTIH JOYKO ( PF-50W )", brand: "JOYKO" },
+        { sku: "00003", product: "ACCO FASTENER PUTIH V-TECH", brand: "V-TECH" },
+        { sku: "09836", product: "ACCO FASTENER WARNA JOYKO ( PF-50C )", brand: "JOYKO" }
+      ];
+    }
+    
+    // Trigger background fetch if it's been more than 10 minutes or lastFetchTime is 0 (first request)
+    if (now - lastFetchTime > CACHE_TTL) {
+      fetchProductsBackground().catch(console.error);
+    }
+    
+    return cachedProducts;
   }
 
   // Search Endpoint
