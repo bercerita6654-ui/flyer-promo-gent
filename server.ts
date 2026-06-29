@@ -209,11 +209,29 @@ async function startServer() {
         cameraAngle, 
         lighting, 
         backgroundProps,
-        generateVariations
+        generateVariations,
+        complexityLevel
       } = req.body;
 
       if (!productName || !packagingInfo) {
         return res.status(400).json({ error: "Nama produk dan detail kemasan wajib diisi." });
+      }
+
+      const complexity = complexityLevel || 'standard';
+      let complexityInstruction = "";
+      if (complexity === 'simple') {
+        complexityInstruction = "Keep the prompt short, clean, direct, and straightforward. Avoid excessive modifier clutter, bloated descriptors, or heavy renderer specs.";
+      } else if (complexity === 'standard') {
+        complexityInstruction = "Add standard professional photography descriptors, elegant studio-lit softbox details, high-quality material textures, and clean background scenery.";
+      } else if (complexity === 'advanced') {
+        complexityInstruction = "Make the prompt highly detailed and artistically rich. You MUST include explicit advanced artistic modifiers, photographic settings, and render engines. Incorporate exact terms like 'ray tracing', 'octane render', and 'depth of field' settings into the English prompt to achieve premium hyper-realistic cinematic render quality.";
+      }
+
+      let platformInstruction = "";
+      if (aiPlatform === 'google-imagen') {
+        platformInstruction = "CRITICAL: The target AI Engine is Google Imagen 3 (Google Flow). Google Imagen 3 is extremely powerful at understanding full natural language and rich descriptive sentences. Therefore, do NOT write prompts with comma-separated tags or keywords. Instead, write BOTH 'promptEng' and 'promptIndo' as elegant, detailed, coherent descriptive paragraphs. Additionally, ensure that 'promptIndo' is fully written in high-quality, professional Indonesian language, describing all elements and textures natively so that the image generator produces amazing results in Indonesian style, while keeping the structure beautifully optimized.";
+      } else {
+        platformInstruction = `Optimize prompts for ${aiPlatform}. English prompt should use typical tags and modifiers optimized for ${aiPlatform}.`;
       }
 
       const styleLabels = {
@@ -236,6 +254,8 @@ async function startServer() {
         - Aspect Ratio: ${aspectRatio}
         - AI Engine: ${aiPlatform}
         - Base Colors: ${colorTheme || "harmonious and visually striking"}
+        - Complexity Requirements: ${complexityInstruction}
+        - AI Platform Specifics: ${platformInstruction}
 
         You must generate exactly these 3 styles of prompt variations:
         1. "Modern Minimalist": Focus on high-end clean workspace, generous negative space, high-key soft studio lighting, soft color theme, elegant placement, minimalist aesthetic.
@@ -271,6 +291,8 @@ async function startServer() {
         - Camera Angle: ${cameraAngle || "professional eye-level advertising studio portrait shot"}
         - Lighting: ${lighting || "professional softbox photography lighting"}
         - Background Props / Decor: ${backgroundProps || "organic matching decorations"}
+        - Complexity Requirements: ${complexityInstruction}
+        - AI Platform Specifics: ${platformInstruction}
 
         Please construct TWO high-quality prompts:
         1. "promptEng": An English prompt. Must be rich in sensory descriptive modifiers (such as "octane render, raytracing reflections, photorealistic textures, atmospheric haze, studio catalog composition, depth of field, 8k resolution"). Ensure aspect ratio and platform optimized tags are present.

@@ -2,7 +2,7 @@ export type DesignStyle = 'umum' | 'anak' | 'dewasa';
 
 export type AspectRatio = '4:5' | '1:1' | '16:9' | '9:16';
 
-export type AIPlatform = 'midjourney' | 'dalle3' | 'stable-diffusion';
+export type AIPlatform = 'midjourney' | 'dalle3' | 'stable-diffusion' | 'google-imagen';
 
 export interface PromptInput {
   brandName: string;
@@ -18,6 +18,7 @@ export interface PromptInput {
   lighting: string;
   backgroundProps: string;
   previewTheme: string;
+  complexityLevel: 'simple' | 'standard' | 'advanced';
 }
 
 export interface SavedPrompt {

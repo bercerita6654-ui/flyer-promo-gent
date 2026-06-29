@@ -51,6 +51,7 @@ export default function App() {
     lighting: 'softbox-studio',
     backgroundProps: '',
     previewTheme: 'minimal-slate',
+    complexityLevel: 'standard',
   });
 
   const [promptIndo, setPromptIndo] = useState<string>('');
@@ -665,6 +666,27 @@ export default function App() {
                       </select>
                     </div>
 
+                    {/* Output Language Selector */}
+                    <div>
+                      <label htmlFor="outputLanguage" className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1">
+                        <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                        Bahasa Hasil Prompt
+                      </label>
+                      <select
+                        id="outputLanguage"
+                        value={activeLang}
+                        onChange={(e) => {
+                          const lang = e.target.value as 'eng' | 'indo';
+                          setActiveLang(lang);
+                          showToastMsg(`Bahasa output diatur ke: ${lang === 'eng' ? 'Inggris' : 'Indonesia'} 🌐`, 'info');
+                        }}
+                        className="w-full px-3 py-2 bg-[#06080e] border border-slate-850 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
+                      >
+                        <option value="eng">Bahasa Inggris (Sangat Direkomendasikan) 🇺🇸</option>
+                        <option value="indo">Bahasa Indonesia 🇮🇩</option>
+                      </select>
+                    </div>
+
                   </div>
 
                   {/* AI target engine */}
@@ -672,12 +694,17 @@ export default function App() {
                     <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
                       Target Pembuat Gambar AI
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['midjourney', 'dalle3', 'stable-diffusion'] as AIPlatform[]).map((platform) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {(['midjourney', 'dalle3', 'stable-diffusion', 'google-imagen'] as AIPlatform[]).map((platform) => (
                         <button
                           key={platform}
                           type="button"
-                          onClick={() => handleInputChange('aiPlatform', platform)}
+                          onClick={() => {
+                            handleInputChange('aiPlatform', platform);
+                            if (platform === 'google-imagen') {
+                              showToastMsg('Target diatur ke Google Imagen 3! 🌐', 'success');
+                            }
+                          }}
                           className={`py-2 px-1 rounded-xl border text-[10px] font-mono uppercase font-bold transition-all ${
                             input.aiPlatform === platform
                               ? 'bg-indigo-600/10 border-indigo-500 text-indigo-400'
@@ -688,12 +715,55 @@ export default function App() {
                           {platform === 'midjourney' && 'Midjourney v6'}
                           {platform === 'dalle3' && 'DALL-E 3'}
                           {platform === 'stable-diffusion' && 'Stable Diff.'}
+                          {platform === 'google-imagen' && 'Google Imagen'}
                         </button>
                       ))}
                     </div>
                   </div>
 
                 </div>
+              </div>
+
+              {/* Complexity Level Selector */}
+              <div className="mt-5 p-4 bg-slate-900/40 border border-slate-850/60 rounded-2xl space-y-3" id="complexity-level-card">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-display font-bold text-slate-200">
+                    Tingkat Kompleksitas AI Enhancer
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['simple', 'standard', 'advanced'] as const).map((level) => {
+                    const isActive = (input.complexityLevel || 'standard') === level;
+                    return (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('complexityLevel', level);
+                          showToastMsg(`Kompleksitas diatur ke: ${level.toUpperCase()} ✨`, 'info');
+                        }}
+                        className={`py-2 px-1 rounded-xl border text-[10px] font-sans font-bold uppercase tracking-wider transition-all flex flex-col items-center justify-center min-h-[36px] ${
+                          isActive
+                            ? 'bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border-indigo-500 text-indigo-400 shadow-md shadow-indigo-500/5'
+                            : 'bg-slate-950/40 border-slate-900 text-slate-500 hover:border-slate-850 hover:text-slate-400'
+                        }`}
+                        id={`complexity-btn-${level}`}
+                      >
+                        <span>
+                          {level === 'simple' && 'Simple ⚡'}
+                          {level === 'standard' && 'Standard 🎯'}
+                          {level === 'advanced' && 'Advanced 🔥'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  {(input.complexityLevel || 'standard') === 'simple' && '⚡ Prompt minimalis, fokus pada kejelasan produk tanpa hiasan berlebih.'}
+                  {(input.complexityLevel || 'standard') === 'standard' && '🎯 Visualisasi komersial seimbang dengan detail studio foto profesional.'}
+                  {(input.complexityLevel || 'standard') === 'advanced' && '🔥 Visualisasi kaya & artistik dengan efek ray tracing, octane render, dan depth of field.'}
+                </p>
               </div>
 
               {/* Creative Variations Toggle Switch */}

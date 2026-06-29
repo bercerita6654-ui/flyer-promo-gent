@@ -43,6 +43,8 @@ export function generateIndoPrompt(input: PromptInput): string {
   let arText = `Ukuran: Aspect ratio ${input.aspectRatio} (${arSuffix})`;
   if (input.aiPlatform === 'dalle3') {
     arText = `Ukuran: Gunakan format rasio ${input.aspectRatio}`;
+  } else if (input.aiPlatform === 'google-imagen') {
+    arText = `Ukuran: Rasio aspek gambar ${input.aspectRatio}`;
   }
 
   const propsText = input.backgroundProps 
@@ -79,6 +81,8 @@ export function generateEngPrompt(input: PromptInput): string {
     arText = `Size: Portrait ratio ${input.aspectRatio}`;
   } else if (input.aiPlatform === 'stable-diffusion') {
     arText = `Size: Resolution matched to ratio ${input.aspectRatio}`;
+  } else if (input.aiPlatform === 'google-imagen') {
+    arText = `Size: Aspect ratio ${input.aspectRatio}`;
   }
 
   const propsText = input.backgroundProps 
