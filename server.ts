@@ -4,8 +4,12 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
+import { fileURLToPath } from "url";
 
 dotenv.config();
+
+const __filename = typeof import.meta.url !== 'undefined' ? fileURLToPath(import.meta.url) : '';
+const __dirname = __filename ? path.dirname(__filename) : process.cwd();
 
 async function startServer() {
   const app = express();
