@@ -222,7 +222,11 @@ export default function App() {
       }
 
       if (response.ok) {
-        showToastMsg(`Berhasil sinkronisasi! ${responseData.count || 0} produk terbaru siap digunakan 🚀`, 'success');
+        if (responseData.note) {
+          showToastMsg(`Sinkronisasi dialihkan: ${responseData.count || 0} produk dari database cadangan lokal siap digunakan! 📦`, 'info');
+        } else {
+          showToastMsg(`Berhasil sinkronisasi! ${responseData.count || 0} produk terbaru siap digunakan 🚀`, 'success');
+        }
       } else {
         showToastMsg(`Gagal sinkronisasi: ${responseData.error || 'Terjadi kesalahan pada server'}`, 'error');
       }

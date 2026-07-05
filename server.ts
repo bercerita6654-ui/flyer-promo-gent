@@ -274,10 +274,10 @@ async function startServer() {
         try {
           let fallbackPath = path.join(process.cwd(), "fallback-products.json");
           if (!fs.existsSync(fallbackPath)) {
-            fallbackPath = path.join(__dirname, "../fallback-products.json");
+            fallbackPath = path.join(resolvedDirname, "../fallback-products.json");
           }
           if (!fs.existsSync(fallbackPath)) {
-            fallbackPath = path.join(__dirname, "fallback-products.json");
+            fallbackPath = path.join(resolvedDirname, "fallback-products.json");
           }
           fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
         } catch (errWrite) {
@@ -288,8 +288,33 @@ async function startServer() {
         return res.status(400).json({ error: "No products found in fetched CSV" });
       }
     } catch (err: any) {
-      console.error("Forced refresh failed:", err);
-      return res.status(500).json({ error: err.message || "Failed to refresh CSV" });
+      console.warn("Forced refresh Google Sheet fetch failed, using local fallback-products.json:", err.message);
+      try {
+        let fallbackPath = path.join(process.cwd(), "fallback-products.json");
+        if (!fs.existsSync(fallbackPath)) {
+          fallbackPath = path.join(resolvedDirname, "../fallback-products.json");
+        }
+        if (!fs.existsSync(fallbackPath)) {
+          fallbackPath = path.join(resolvedDirname, "fallback-products.json");
+        }
+        
+        if (fs.existsSync(fallbackPath)) {
+          const dataStr = fs.readFileSync(fallbackPath, "utf8");
+          const localItems = JSON.parse(dataStr);
+          if (localItems && localItems.length > 0) {
+            cachedProducts = localItems;
+            lastFetchTime = Date.now();
+            return res.json({ 
+              success: true, 
+              count: localItems.length, 
+              note: "Google Sheet sedang offline atau tidak dapat diakses. Sinkronisasi dialihkan menggunakan database produk cadangan lokal."
+            });
+          }
+        }
+      } catch (localErr: any) {
+        console.error("Local fallback load also failed:", localErr);
+      }
+      return res.status(500).json({ error: `Gagal sinkronisasi: ${err.message || "Gagal mengunduh Google Sheet"}` });
     }
   });
 
