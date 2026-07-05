@@ -22,7 +22,9 @@ import {
   Sparkle,
   Camera,
   Sun,
-  Grid
+  Grid,
+  Megaphone,
+  Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DesignStyle, AspectRatio, AIPlatform, PromptInput, SavedPrompt, Preset } from './types';
@@ -69,6 +71,19 @@ export default function App() {
   const [generateVariations, setGenerateVariations] = useState<boolean>(false);
   const [variations, setVariations] = useState<Array<{ style: string; promptEng: string; promptIndo: string }> | null>(null);
   const [selectedVarIndex, setSelectedVarIndex] = useState<number>(0);
+
+  // 30s Ad Script States
+  const [adScript, setAdScript] = useState<{
+    title: string;
+    duration: string;
+    targetAudience: string;
+    keyBenefits: string[];
+    scenes: Array<{ sceneNumber: number; visual: string; audio: string; duration: string }>;
+    fullNarrative: string;
+  } | null>(null);
+  const [isGeneratingScript, setIsGeneratingScript] = useState<boolean>(false);
+  const [scriptActiveTab, setScriptActiveTab] = useState<'storyboard' | 'narrative'>('storyboard');
+  const [showScriptResult, setShowScriptResult] = useState<boolean>(false);
 
   // 2. Load History from Local Storage on mount
   useEffect(() => {
@@ -270,6 +285,87 @@ export default function App() {
     } finally {
       setIsEnhancing(false);
       setEnhanceProgressText('');
+    }
+  };
+
+  const handleGenerateAdScript = async () => {
+    if (!input.productName.trim()) {
+      showToastMsg('Mohon isi Nama Produk terlebih dahulu.', 'error');
+      return;
+    }
+
+    setIsGeneratingScript(true);
+    try {
+      const response = await fetch('/api/generate-ad-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName: input.brandName,
+          productName: input.productName,
+          packagingInfo: input.packagingInfo,
+          language: activeLang, // Uses the user's active output language
+          colorTheme: input.colorTheme,
+          backgroundProps: input.backgroundProps,
+          designStyle: input.designStyle
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Gagal menghasilkan script iklan.');
+      }
+
+      const data = await response.json();
+      setAdScript(data);
+      setShowScriptResult(true);
+      showToastMsg(activeLang === 'indo' 
+        ? 'Script Iklan 30 Detik berhasil dibuat! 📣' 
+        : '30-Second Commercial Script successfully generated! 📣', 
+        'success'
+      );
+    } catch (error: any) {
+      console.error(error);
+      showToastMsg(error.message || 'Gagal menghasilkan script iklan dengan Gemini.', 'error');
+    } finally {
+      setIsGeneratingScript(false);
+    }
+  };
+
+  const handleDownloadAdScriptTxt = () => {
+    if (!adScript) return;
+    try {
+      let content = `NASKAH VIDEO IKLAN 30 DETIK\n`;
+      content += `============================\n\n`;
+      content += `Judul Kampanye: ${adScript.title}\n`;
+      content += `Durasi: ${adScript.duration}\n`;
+      content += `Target Audiens: ${adScript.targetAudience}\n\n`;
+      content += `Keunggulan Utama / Key Benefits:\n`;
+      adScript.keyBenefits.forEach((b, idx) => {
+        content += `- ${b}\n`;
+      });
+      content += `\n--------------------------------------------\n`;
+      content += `NASKAH STORYBOARD & VISUAL CUES\n`;
+      content += `--------------------------------------------\n\n`;
+      adScript.scenes.forEach((s) => {
+        content += `Scene #${s.sceneNumber} (${s.duration})\n`;
+        content += `Visual: ${s.visual}\n`;
+        content += `Voiceover / Audio: ${s.audio}\n\n`;
+      });
+      content += `--------------------------------------------\n`;
+      content += `TEKS NARASI UTUH (VOICEOVER ONLY)\n`;
+      content += `--------------------------------------------\n\n`;
+      content += adScript.fullNarrative;
+
+      const element = document.createElement("a");
+      const file = new Blob([content], { type: "text/plain;charset=utf-8" });
+      element.href = URL.createObjectURL(file);
+      element.download = `Ad_Script_30s_${adScript.title.replace(/\s+/g, '_')}.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      showToastMsg('File naskah berhasil diunduh! 📝', 'success');
+    } catch (e) {
+      showToastMsg('Gagal mengunduh file naskah.', 'error');
     }
   };
 
@@ -863,6 +959,45 @@ export default function App() {
                 )}
               </AnimatePresence>
 
+              {/* GENERATE AD SCRIPT BUTTON & CARD */}
+              <div className="mt-5 p-4 bg-[#0a0d17] border border-slate-850/80 rounded-2xl space-y-3 shadow-md" id="ad-script-generator-card">
+                <div className="flex items-start gap-3">
+                  <span className="p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl mt-0.5">
+                    <Megaphone className="w-4 h-4 animate-bounce" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-display font-bold text-slate-200">
+                      {activeLang === 'indo' ? 'Naskah Video Iklan 30 Detik' : '30-Second Video Ad Script'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                      {activeLang === 'indo' 
+                        ? 'Buat naskah voiceover siap baca dan storyboard visual komersial 30 detik berdasarkan detail produk di atas.' 
+                        : 'Generate a professional ready-to-read voiceover narrative and visual storyboard for a 30s video ad.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateAdScript}
+                  disabled={isGeneratingScript || isEnhancing}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-950/10 active:scale-[0.98] disabled:opacity-50"
+                  id="generate-ad-script-btn"
+                >
+                  {isGeneratingScript ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span>{activeLang === 'indo' ? 'Menulis Naskah Iklan...' : 'Writing Ad Script...'}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Volume2 className="w-4 h-4 text-amber-300 animate-pulse" />
+                      <span>{activeLang === 'indo' ? 'Buat Script Iklan 30s (Gemini AI) 📣' : 'Generate 30s Ad Script (Gemini AI) 📣'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
             </div>
           </section>
 
@@ -1031,6 +1166,145 @@ export default function App() {
                       </div>
                     </div>
 
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 30s Ad Script Results Interface Container */}
+            <AnimatePresence>
+              {showScriptResult && adScript && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                  className="bg-[#0c0a1c] border border-purple-950/80 rounded-3xl p-5 shadow-2xl relative overflow-hidden mt-6"
+                  id="ad-script-results-container"
+                >
+                  {/* Glowing header strip */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500" />
+                  
+                  <div className="flex flex-col gap-2 mb-4 z-10 relative">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="w-4 h-4 text-purple-400" />
+                        <h3 className="text-sm font-display font-bold text-slate-200">
+                          {activeLang === 'indo' ? 'Hasil Naskah Iklan 30s' : '30s Ad Script Result'}
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-mono bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20 font-bold uppercase tracking-wider">
+                        {adScript.duration}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-sans font-bold text-slate-100 italic">
+                      "{adScript.title}"
+                    </h4>
+                  </div>
+
+                  {/* Target Audience & Benefits */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-slate-950/60 rounded-2xl border border-slate-900 text-[11px] text-slate-400">
+                    <div>
+                      <span className="block font-semibold text-purple-400 uppercase tracking-wider text-[9px] mb-1">
+                        {activeLang === 'indo' ? 'TARGET AUDIENS' : 'TARGET AUDIENCE'}
+                      </span>
+                      {adScript.targetAudience}
+                    </div>
+                    <div>
+                      <span className="block font-semibold text-purple-400 uppercase tracking-wider text-[9px] mb-1">
+                        {activeLang === 'indo' ? 'KEUNGGULAN UTAMA' : 'KEY BENEFITS'}
+                      </span>
+                      <ul className="list-disc pl-3.5 space-y-0.5 text-slate-300">
+                        {adScript.keyBenefits && adScript.keyBenefits.map((b, idx) => (
+                          <li key={idx}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Tabs for Storyboard vs Narrative */}
+                  <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-900 shadow-inner mb-4">
+                    <button
+                      onClick={() => setScriptActiveTab('storyboard')}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-sans font-bold transition-all ${
+                        scriptActiveTab === 'storyboard'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      id="tab-script-storyboard"
+                    >
+                      {activeLang === 'indo' ? 'Naskah Storyboard' : 'Storyboard Script'}
+                    </button>
+                    <button
+                      onClick={() => setScriptActiveTab('narrative')}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-sans font-bold transition-all ${
+                        scriptActiveTab === 'narrative'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      id="tab-script-narrative"
+                    >
+                      {activeLang === 'indo' ? 'Teks Narasi Penuh' : 'Full Voiceover'}
+                    </button>
+                  </div>
+
+                  {/* Active Tab Content */}
+                  <div className="space-y-4">
+                    {scriptActiveTab === 'storyboard' ? (
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-purple-900/50" id="script-storyboard-timeline">
+                        {adScript.scenes && adScript.scenes.map((scene) => (
+                          <div key={scene.sceneNumber} className="relative pl-5 border-l-2 border-purple-900/40 space-y-1">
+                            <div className="absolute left-[-5px] top-1.5 w-2 h-2 rounded-full bg-purple-500 shadow-md shadow-purple-500/50" />
+                            <div className="flex items-center justify-between text-[10px] font-mono">
+                              <span className="font-bold text-purple-400 uppercase">
+                                {activeLang === 'indo' ? `Adegan ${scene.sceneNumber}` : `Scene ${scene.sceneNumber}`}
+                              </span>
+                              <span className="bg-purple-950/50 text-purple-300 px-1.5 py-0.5 rounded border border-purple-900/30">
+                                {scene.duration}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-300 leading-normal">
+                              <span className="text-slate-500 font-semibold">{activeLang === 'indo' ? 'Visual: ' : 'Visual: '}</span>
+                              {scene.visual}
+                            </p>
+                            <p className="text-[11px] text-slate-200 bg-purple-950/20 p-2 rounded-lg border border-purple-950/20 leading-relaxed italic">
+                              <span className="text-purple-400 not-italic font-bold">Audio: </span>
+                              "{scene.audio}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="relative group">
+                        <textarea
+                          readOnly
+                          value={adScript.fullNarrative}
+                          className="w-full h-[220px] p-4 bg-slate-950 border border-slate-850 rounded-2xl text-slate-300 placeholder-slate-700 text-xs font-serif leading-relaxed resize-none focus:outline-none focus:ring-0 shadow-inner italic"
+                          id="script-narrative-textarea"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 to-transparent pointer-events-none rounded-2xl" />
+                      </div>
+                    )}
+
+                    {/* Action buttons for copying / downloading */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleCopy(adScript.fullNarrative)}
+                        className="py-3 px-4 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] transition-all text-white font-sans font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-950/20"
+                        id="copy-script-to-clipboard-btn"
+                      >
+                        <Copy className="w-4 h-4" />
+                        {activeLang === 'indo' ? 'Salin Narasi' : 'Copy Narration'}
+                      </button>
+
+                      <button
+                        onClick={handleDownloadAdScriptTxt}
+                        className="py-3 px-4 bg-[#141026] hover:bg-[#1a1532] border border-[#2a204d] text-purple-300 hover:text-white transition-all font-sans font-bold rounded-xl text-xs flex items-center justify-center gap-2"
+                        id="download-ad-script-btn-element"
+                      >
+                        <Download className="w-4 h-4" />
+                        {activeLang === 'indo' ? 'Unduh Script' : 'Download Script'}
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}

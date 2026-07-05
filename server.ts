@@ -86,8 +86,8 @@ async function startServer() {
     
     try {
       console.log("Asynchronously fetching fresh products list from Google Sheets...");
-      // User's requested exact URL
-      const primaryUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv';
+      // User's requested exact STOCK LIST sheet tab
+      const primaryUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
       const fallbackUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
       
       let response = await fetch(primaryUrl, {
@@ -353,6 +353,81 @@ async function startServer() {
     } catch (error: any) {
       console.error("Gemini API Error in server.ts:", error);
       return res.status(500).json({ error: error.message || "Gagal merancang prompt dengan Gemini AI." });
+    }
+  });
+
+  // API Route for generating 30-second advertising script
+  app.post("/api/generate-ad-script", async (req, res) => {
+    try {
+      const {
+        brandName,
+        productName,
+        packagingInfo,
+        language,
+        colorTheme,
+        backgroundProps,
+        designStyle
+      } = req.body;
+
+      if (!productName) {
+        return res.status(400).json({ error: "Nama produk wajib diisi." });
+      }
+
+      const lang = language || 'indo';
+      const isIndo = lang === 'indo';
+
+      const promptTemplate = `
+        You are an elite, highly creative marketing copywriter and commercial director.
+        Generate a compelling, high-converting, and engaging 30-second advertising video script (storyboard + voiceover narrative) for the following product:
+        - Brand Name: ${brandName || "Unspecified"}
+        - Product Name: ${productName}
+        - Packaging Info: ${packagingInfo || "Standard packaging"}
+        - Aesthetic / Design Style: ${designStyle || "Modern Minimalist"}
+        - Main Color Theme: ${colorTheme || "Harmonious"}
+        - Visual Elements / Background: ${backgroundProps || "Elegant accessories"}
+
+        Target Duration: Exactly 30 seconds.
+        Response Language: ${isIndo ? 'Indonesian (Bahasa Indonesia)' : 'English'}. All script content, copy, narration, and scene descriptions MUST be written in this language. Make it sound extremely professional, catchy, energetic, and native.
+
+        Output MUST be a raw JSON object with the following exact keys and structure:
+        {
+          "title": "A short, catchy, punchy headline or title for this commercial campaign",
+          "duration": "30 ${isIndo ? 'Detik' : 'Seconds'}",
+          "targetAudience": "Description of the target customer/audience",
+          "keyBenefits": ["Benefit 1", "Benefit 2", "Benefit 3"],
+          "scenes": [
+            {
+              "sceneNumber": 1,
+              "visual": "Detailed description of the visual scene, camera angle, lighting, and product placement (e.g. 0-5s)",
+              "audio": "Voiceover narrative line and matching sound effects (SFX) / background music (BGM) cues",
+              "duration": "5s"
+            }
+          ],
+          "fullNarrative": "A clean, contiguous paragraph containing only the spoken voiceover text from all scenes combined, so it is extremely easy to copy-paste for reading or AI TTS voice synthesis."
+        }
+
+        Important rules:
+        - Design a sequence of 4 to 6 scenes covering the 30-second duration.
+        - Ensure the tone is highly professional, persuasive, and captures attention in the first 3 seconds.
+        - The visual descriptions should perfectly match the designated design style (${designStyle}) and color theme (${colorTheme}).
+        - Do not include any markdown code blocks, backticks, or explanation. Return ONLY the raw JSON object.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: promptTemplate,
+        config: {
+          responseMimeType: "application/json",
+        }
+      });
+
+      const responseText = response.text || "{}";
+      const result = JSON.parse(responseText.trim());
+      return res.json(result);
+
+    } catch (error: any) {
+      console.error("Gemini API Ad Script Error in server.ts:", error);
+      return res.status(500).json({ error: error.message || "Gagal menghasilkan script iklan dengan Gemini AI." });
     }
   });
 
