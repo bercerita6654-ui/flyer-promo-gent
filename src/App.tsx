@@ -37,6 +37,123 @@ import Toast from './components/Toast';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import ProductSearchInput from './components/ProductSearchInput';
 
+function parseColorTheme(themeText: string): Array<{ name: string; hex: string }> {
+  if (!themeText || themeText.trim() === '') return [];
+  
+  // Split by commas, ampersand, slash, and words like "dan" or "and"
+  const parts = themeText.split(/[,&/|]|\bdan\b|\band\b/i).map(p => p.trim()).filter(Boolean);
+  
+  // Mapping of common Indonesian and English color words to hex values
+  const colorMap: Record<string, string> = {
+    // Indonesian
+    'merah muda': '#ec4899',
+    'abu-abu': '#64748b',
+    'abu abu': '#64748b',
+    'merah': '#ef4444',
+    'biru': '#3b82f6',
+    'kuning': '#eab308',
+    'hijau': '#22c55e',
+    'putih': '#ffffff',
+    'hitam': '#0f172a',
+    'abu': '#64748b',
+    'cokelat': '#78350f',
+    'coklat': '#78350f',
+    'jingga': '#f97316',
+    'oranye': '#f97316',
+    'orange': '#f97316',
+    'ungu': '#a855f7',
+    'pink': '#ec4899',
+    'emas': '#fbbf24',
+    'gold': '#fbbf24',
+    'perak': '#cbd5e1',
+    'silver': '#cbd5e1',
+    'tembaga': '#b45309',
+    'bronze': '#cd7f32',
+    'tosca': '#0d9488',
+    'teal': '#0f766e',
+    'navy': '#1e3a8a',
+    'maroon': '#7f1d1d',
+    'cream': '#fef3c7',
+    'krem': '#fef3c7',
+    'khaki': '#f0e68c',
+    'magenta': '#d946ef',
+    'pastel': '#fbcfe8',
+    'sage': '#9faf90',
+    'lavender': '#e9d5ff',
+    'peach': '#ffedd5',
+    'espresso': '#4a3728',
+    'mint': '#a7f3d0',
+    'coral': '#ff7f50',
+    'cyan': '#06b6d4',
+    'emerald': '#10b981',
+    'indigo': '#6366f1',
+    'fuchsia': '#d946ef',
+    'violet': '#8b5cf6',
+    'olive': '#808000',
+    
+    // English
+    'sage green': '#9faf90',
+    'rose gold': '#b76e79',
+    'red': '#ef4444',
+    'blue': '#3b82f6',
+    'yellow': '#eab308',
+    'green': '#22c55e',
+    'white': '#ffffff',
+    'black': '#0f172a',
+    'gray': '#64748b',
+    'grey': '#64748b',
+    'brown': '#78350f',
+    'purple': '#a855f7',
+    'rose': '#f43f5e',
+    'amber': '#f59e0b',
+    'lime': '#84cc16',
+    'sky': '#0ea5e9',
+    'slate': '#475569',
+    'zinc': '#52525b',
+    'neutral': '#737373',
+    'stone': '#78716c',
+  };
+
+  const matchedColors: Array<{ name: string; hex: string }> = [];
+  
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    
+    // Look for raw hex code matches (e.g. #ff0000 or ff0000)
+    const hexMatch = lower.match(/#?([0-9a-f]{6}|[0-9a-f]{3})\b/i);
+    if (hexMatch) {
+      const hex = hexMatch[0].startsWith('#') ? hexMatch[0] : `#${hexMatch[0]}`;
+      matchedColors.push({ name: part, hex });
+      continue;
+    }
+
+    // Try finding exact or partial color name matches
+    let found = false;
+    // Sort keys by descending length so that multi-word/longer matches win first
+    const sortedKeys = Object.keys(colorMap).sort((a, b) => b.length - a.length);
+    for (const key of sortedKeys) {
+      if (lower.includes(key)) {
+        matchedColors.push({ name: part, hex: colorMap[key] });
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      // Fallback deterministic hash-color for custom/unknown terms
+      let hash = 0;
+      for (let i = 0; i < part.length; i++) {
+        hash = part.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+      const hex = '#' + '00005'.substring(0, 6 - c.length) + c;
+      matchedColors.push({ name: part, hex });
+    }
+  }
+
+  return matchedColors;
+}
+
 export default function App() {
   const systemTheme = useSystemTheme();
 
@@ -1172,6 +1289,42 @@ export default function App() {
                             </button>
                           );
                         })}
+                      </div>
+                    )}
+
+                    {/* Dynamic Color Swatches Preview */}
+                    {input.colorTheme && input.colorTheme.trim() !== "" && (
+                      <div className="bg-[#0e1322] p-3 rounded-2xl border border-indigo-950/60 shadow-inner space-y-2" id="color-swatches-preview-panel">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Palette className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                            {activeLang === 'indo' ? 'Palet Warna Visual' : 'Visual Color Palette'}
+                          </span>
+                          <span className="text-[9px] font-mono font-medium text-slate-500 max-w-[200px] truncate" title={input.colorTheme}>
+                            {input.colorTheme}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {parseColorTheme(input.colorTheme).map((color, cIdx) => (
+                            <div 
+                              key={`${color.name}-${cIdx}`}
+                              className="flex items-center gap-1.5 bg-[#090d16] hover:bg-slate-950 border border-slate-850/80 px-2 py-1 rounded-xl transition-all cursor-default group/swatch"
+                            >
+                              <span 
+                                className="w-3.5 h-3.5 rounded-full border border-white/10 shadow-sm flex-shrink-0 transition-transform duration-200 group-hover/swatch:scale-110" 
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-sans font-bold text-slate-300 leading-tight">
+                                  {color.name}
+                                </span>
+                                <span className="text-[8px] font-mono text-slate-500 leading-none">
+                                  {color.hex}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
