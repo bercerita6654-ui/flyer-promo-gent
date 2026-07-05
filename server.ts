@@ -86,12 +86,25 @@ async function startServer() {
     
     try {
       console.log("Asynchronously fetching fresh products list from Google Sheets...");
-      const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
-      const response = await fetch(url, {
+      // User's requested exact URL
+      const primaryUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv';
+      const fallbackUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
+      
+      let response = await fetch(primaryUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      if (!response.ok) {
+        console.warn(`Primary URL fetch returned status ${response.status}. Trying fallback URL...`);
+        response = await fetch(fallbackUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+      }
+      
       if (!response.ok) throw new Error(`Failed to fetch CSV from Google Sheet, status: ${response.status}`);
       
       const text = await response.text();
@@ -117,21 +130,25 @@ async function startServer() {
       }
 
       console.log(`Successfully cached ${items.length} fresh products from Google Sheets in background.`);
-      cachedProducts = items;
-      lastFetchTime = Date.now();
-
-      // Update fallback file so we keep the local file fresh
-      try {
-        let fallbackPath = path.join(process.cwd(), "fallback-products.json");
-        if (!fs.existsSync(fallbackPath)) {
-          fallbackPath = path.join(__dirname, "../fallback-products.json");
+      if (items.length > 0) {
+        cachedProducts = items;
+        lastFetchTime = Date.now();
+        
+        // Update fallback file so we keep the local file fresh
+        try {
+          let fallbackPath = path.join(process.cwd(), "fallback-products.json");
+          if (!fs.existsSync(fallbackPath)) {
+            fallbackPath = path.join(__dirname, "../fallback-products.json");
+          }
+          if (!fs.existsSync(fallbackPath)) {
+            fallbackPath = path.join(__dirname, "fallback-products.json");
+          }
+          fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
+        } catch (errWrite) {
+          console.error("Failed to write to fallback-products.json:", errWrite);
         }
-        if (!fs.existsSync(fallbackPath)) {
-          fallbackPath = path.join(__dirname, "fallback-products.json");
-        }
-        fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
-      } catch (errWrite) {
-        console.error("Failed to write to fallback-products.json:", errWrite);
+      } else {
+        console.warn("Fetched CSV yielded 0 items. Keeping existing cached items.");
       }
     } catch (err) {
       console.error('Error fetching products from Google Sheet in background:', err);
