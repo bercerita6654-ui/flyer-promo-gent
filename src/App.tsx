@@ -36,6 +36,7 @@ import PromptHistory from './components/PromptHistory';
 import Toast from './components/Toast';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import ProductSearchInput from './components/ProductSearchInput';
+import { syncProductsFromGoogleSheets } from './utils/productDb';
 
 function parseColorTheme(themeText: string): Array<{ name: string; hex: string }> {
   if (!themeText || themeText.trim() === '') return [];
@@ -209,30 +210,19 @@ export default function App() {
     setIsRefreshingCsv(true);
     showToastMsg('Memulai sinkronisasi CSV stock list terbaru...', 'info');
     try {
-      const response = await fetch('/api/products/refresh', {
-        method: 'POST',
-      });
-      
-      const responseText = await response.text();
-      let responseData: any = {};
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        responseData = { error: responseText.slice(0, 100) || `Status code: ${response.status}` };
-      }
-
-      if (response.ok) {
-        if (responseData.note) {
-          showToastMsg(`Sinkronisasi dialihkan: ${responseData.count || 0} produk dari database cadangan lokal siap digunakan! 📦`, 'info');
+      const syncResult = await syncProductsFromGoogleSheets();
+      if (syncResult.success) {
+        if (syncResult.note) {
+          showToastMsg(`Sinkronisasi dialihkan: ${syncResult.count || 0} produk dari database cadangan lokal siap digunakan! 📦`, 'info');
         } else {
-          showToastMsg(`Berhasil sinkronisasi! ${responseData.count || 0} produk terbaru siap digunakan 🚀`, 'success');
+          showToastMsg(`Berhasil sinkronisasi! ${syncResult.count || 0} produk terbaru siap digunakan 🚀`, 'success');
         }
       } else {
-        showToastMsg(`Gagal sinkronisasi: ${responseData.error || 'Terjadi kesalahan pada server'}`, 'error');
+        showToastMsg(`Gagal sinkronisasi: Terjadi kesalahan saat membaca lembar Google Sheets.`, 'error');
       }
     } catch (err: any) {
       console.error('Failed to sync CSV:', err);
-      showToastMsg(`Gagal terhubung ke server: ${err.message || 'Koneksi terputus'}`, 'error');
+      showToastMsg(`Gagal sinkronisasi: ${err.message || 'Koneksi terputus'}`, 'error');
     } finally {
       setIsRefreshingCsv(false);
     }
@@ -335,6 +325,333 @@ export default function App() {
     showToastMsg('Prompt standar berhasil dibuat! ✨', 'success');
   };
 
+  // CLIENT SIDE EMULATORS TO REPLICATE GEMINI LOGIC ROBUSTLY AND PREVENT DEPLOYMENT/SYNC ERRORS
+  const enhancePromptClient = (input: PromptInput, generateVariations: boolean) => {
+    const cleanBrand = input.brandName ? input.brandName.trim() : "";
+    const cleanProduct = input.productName.trim();
+    const cleanPkg = input.packagingInfo.trim();
+    const cleanColor = input.colorTheme ? input.colorTheme.trim() : "harmonious and modern";
+    const cleanProps = input.backgroundProps ? input.backgroundProps.trim() : "subtle matching elements";
+    
+    const ratioStr = input.aspectRatio || "1:1";
+    const platform = input.aiPlatform || "midjourney";
+    const complexity = input.complexityLevel || "standard";
+
+    // Camera Angle & Lighting Label Mapping for extra descriptive detail
+    const cameraAngleText = input.cameraAngle || "professional eye-level studio photography";
+    const lightingText = input.lighting || "professional studio softbox lighting";
+
+    // Style details
+    const styleDescMap = {
+      umum: {
+        eng: "Clean, professional corporate design, balanced high contrast layout, modern typography arrangement",
+        indo: "Desain profesional bersih, tata letak kontras seimbang, susunan tipografi modern"
+      },
+      anak: {
+        eng: "Bright, playful, vibrant pastel color palette, cheerful child-friendly elements and soft cartoonish accents",
+        indo: "Cerah, ceria, palet warna pastel cerah, elemen ramah anak yang menyenangkan dan aksen kartun lembut"
+      },
+      dewasa: {
+        eng: "Ultra-premium luxury aesthetic, elegant dark theme, subtle gold/bronze metallic accents, sophisticated clean branding lines",
+        indo: "Estetika mewah ultra-premium, tema gelap elegan, aksen logam emas/perunggu halus, garis merek bersih yang canggih"
+      }
+    };
+
+    const styleDesc = styleDescMap[input.designStyle as 'umum' | 'anak' | 'dewasa'] || styleDescMap.umum;
+
+    // Platform specific prompt tuning
+    let platformTag = "";
+    if (platform === "midjourney") {
+      platformTag = `--ar ${ratioStr} --v 6.0 --stylize 250`;
+    } else if (platform === "stable-diffusion") {
+      platformTag = `photorealistic masterpiece, highly detailed, aspect ratio ${ratioStr}`;
+    } else if (platform === "google-imagen") {
+      platformTag = `high-fidelity commercial render, perfect proportions, ratio ${ratioStr}`;
+    } else {
+      platformTag = `high quality commercial visual, ratio ${ratioStr}`;
+    }
+
+    // Build individual prompt parts
+    const buildPrompts = (styleOverride?: string) => {
+      let activeStyleEng = styleDesc.eng;
+      let activeStyleIndo = styleDesc.indo;
+
+      if (styleOverride === "Modern Minimalist") {
+        activeStyleEng = "Modern minimalist design, clean workspace setting, generous elegant negative space, high-key bright lighting, soft pastel accents, extremely organized composition";
+        activeStyleIndo = "Desain minimalis modern, latar tempat kerja bersih, ruang kosong negatif yang elegan, pencahayaan terang benderang, aksen pastel lembut, komposisi yang sangat rapi";
+      } else if (styleOverride === "Cinematic Dramatic") {
+        activeStyleEng = "Cinematic dramatic catalog photography, moody chiaroscuro dark rim light, deep volumetric shadows, rich dark textured background, hyper-realistic reflections";
+        activeStyleIndo = "Fotografi katalog dramatis sinematik, pencahayaan rim gelap chiaroscuro dramatis, bayangan volumetrik mendalam, latar belakang bertekstur gelap, refleksi hiper-realistis";
+      } else if (styleOverride === "Bright Commercial") {
+        activeStyleEng = "Vibrant bright commercial advertisement, energetic splash of liquid and flying organic ingredients, high-energy dynamic action shot, 3-point bright professional studio lights";
+        activeStyleIndo = "Iklan komersial cerah yang dinamis, cipratan cairan energik dan bahan-bahan organik beteberan, jepretan aksi dinamis berenergi tinggi, lampu studio profesional 3 titik yang terang";
+      }
+
+      const brandIntroEng = cleanBrand ? `brand "${cleanBrand}"` : "premium brand";
+      const brandIntroIndo = cleanBrand ? `merek "${cleanBrand}"` : "merek premium";
+
+      // English Prompts
+      let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
+        `Product Packaging Design: ${cleanPkg}. ` +
+        `Aesthetic Theme: ${activeStyleEng}. ` +
+        `Color Theme: ${cleanColor}. ` +
+        `Camera Perspective: ${cameraAngleText}. ` +
+        `Lighting Setup: ${lightingText}. ` +
+        `Background Decor & Accents: ${cleanProps}. ` +
+        `Composition Grid: 80% beautiful product central focus, 20% clean margins for copy text. ` +
+        `Top section displays the product "${cleanProduct}". Middle section showcases key ingredients. Bottom section outlines clear benefits. ` +
+        `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}`;
+
+      // Indonesian Prompts
+      let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
+        `Desain Kemasan Produk: ${cleanPkg}. ` +
+        `Tema Estetika: ${activeStyleIndo}. ` +
+        `Tema Warna: ${cleanColor}. ` +
+        `Sudut Kamera: ${cameraAngleText}. ` +
+        `Pencahayaan: ${lightingText}. ` +
+        `Properti & Dekorasi Latar Belakang: ${cleanProps}. ` +
+        `Aturan Komposisi: 80% fokus utama pada produk di bagian tengah, 20% ruang kosong di pinggir untuk teks iklan. ` +
+        `Bagian atas menampilkan produk "${cleanProduct}". Bagian tengah menunjukkan bahan utama/aksi. Bagian bawah menyediakan tempat untuk info keunggulan produk. ` +
+        `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}`;
+
+      // Complexity Level modifications
+      if (complexity === 'simple') {
+        promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". Packaging: ${cleanPkg}. Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
+        promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". Kemasan: ${cleanPkg}. Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
+      } else if (complexity === 'advanced') {
+        promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
+        promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;
+      }
+
+      return { promptEng, promptIndo };
+    };
+
+    if (generateVariations) {
+      const styles = ["Modern Minimalist", "Cinematic Dramatic", "Bright Commercial"];
+      const variations = styles.map(style => {
+        const { promptEng, promptIndo } = buildPrompts(style);
+        return {
+          style,
+          promptEng,
+          promptIndo
+        };
+      });
+
+      return {
+        generateVariations: true,
+        variations
+      };
+    } else {
+      const { promptEng, promptIndo } = buildPrompts();
+      return {
+        generateVariations: false,
+        promptEng,
+        promptIndo
+      };
+    }
+  };
+
+  const generateAdScriptClient = (input: PromptInput, language: 'indo' | 'eng', voiceTone: string) => {
+    const isIndo = language === 'indo';
+    const cleanBrand = input.brandName ? input.brandName.trim() : (isIndo ? "Merek Utama" : "Premium Brand");
+    const cleanProduct = input.productName.trim();
+    const cleanPkg = input.packagingInfo ? input.packagingInfo.trim() : (isIndo ? "Kemasan Eksklusif" : "Premium Packaging");
+    const tone = voiceTone || "Professional";
+    const style = input.designStyle || "umum";
+    const colors = input.colorTheme || (isIndo ? "harmonis" : "harmonious");
+    const bg = input.backgroundProps || (isIndo ? "dekorasi estetik" : "aesthetic decorations");
+
+    // Generate customized Title
+    let title = "";
+    if (isIndo) {
+      title = `Kampanye Hebat ${cleanProduct} - Sentuhan ${tone}`;
+    } else {
+      title = `The Ultimate ${cleanProduct} Campaign - ${tone} Vibe`;
+    }
+
+    // Generate key benefits based on tone
+    let keyBenefits: string[] = [];
+    let targetAudience = "";
+
+    if (isIndo) {
+      targetAudience = `Konsumen modern yang cerdas, menyukai gaya hidup ${style === 'dewasa' ? 'mewah dan elegan' : style === 'anak' ? 'ceria dan aktif' : 'fungsional dan praktis'}.`;
+      if (tone === "Professional" || tone === "Profesional") {
+        keyBenefits = [
+          `Kualitas teruji klinis dan tepercaya`,
+          `Desain ergonomis dengan material premium`,
+          `Hasil optimal yang konsisten setiap saat`
+        ];
+      } else if (tone === "Energetic" || tone === "Energetik") {
+        keyBenefits = [
+          `Meningkatkan semangat dan energi harian`,
+          `Aksi cepat berenergi tinggi`,
+          `Gaya hidup aktif tanpa batas`
+        ];
+      } else if (tone === "Empathetic" || tone === "Empatis") {
+        keyBenefits = [
+          `Sangat mengerti kebutuhan kenyamanan keluarga`,
+          `Bahan super lembut dan aman untuk kulit sensitif`,
+          `Memberikan ketenangan pikiran sepanjang hari`
+        ];
+      } else if (tone === "Persuasive" || tone === "Persuasif") {
+        keyBenefits = [
+          `Solusi terbaik dengan penawaran terbatas`,
+          `Terbukti menghemat waktu dan biaya hingga 50%`,
+          `Direkomendasikan oleh ribuan pelanggan setia`
+        ];
+      } else { // Humorous / Humor
+        keyBenefits = [
+          `Solusi anti-ribet penolak hari suram`,
+          `Saking praktisnya, bikin tetangga ikutan penasaran`,
+          `Menghadirkan senyum ceria di setiap penggunaan`
+        ];
+      }
+    } else {
+      targetAudience = `Modern lifestyle enthusiasts looking for a ${style === 'dewasa' ? 'luxurious and premium' : style === 'anak' ? 'fun and active' : 'smart and functional'} solution.`;
+      if (tone === "Professional" || tone === "Profesional") {
+        keyBenefits = [
+          `Clinically proven high-grade quality`,
+          `Ergonomic layout crafted with premium materials`,
+          `Consistent, dependable professional performance`
+        ];
+      } else if (tone === "Energetic" || tone === "Energetik") {
+        keyBenefits = [
+          `Boosts daily productivity and focus`,
+          `Ultra-fast dynamic action response`,
+          `Designed for a vibrant, active lifestyle`
+        ];
+      } else if (tone === "Empathetic" || tone === "Empatis") {
+        keyBenefits = [
+          `Deeply understands family comfort and safety`,
+          `100% hypoallergenic and gentle on skin`,
+          `Provides endless peace of mind and relief`
+        ];
+      } else if (tone === "Persuasive" || tone === "Persuasif") {
+        keyBenefits = [
+          `Exclusive limited-time offer for smart buyers`,
+          `Saves up to 50% of time and maintenance effort`,
+          `Endorsed by thousands of certified experts`
+        ];
+      } else { // Humorous
+        keyBenefits = [
+          `Zero-stress solution for daily life hacks`,
+          `So elegant and funny, it makes you smile`,
+          `Guaranteed to keep your mood super bright`
+        ];
+      }
+    }
+
+    // Generate dynamic scenes
+    const scenes: Array<{ sceneNumber: number, visual: string, audio: string, duration: string }> = [];
+    const narrativeLines: string[] = [];
+
+    if (isIndo) {
+      // Scene 1: Hook
+      let v1 = `Pembuka (0-5 detik): Kamera menyorot tajam produk ${cleanProduct} dengan kemasan ${cleanPkg} yang diletakkan elegan di atas latar belakang ${bg} bertemakan warna ${colors}.`;
+      let a1 = "";
+      if (tone === "Energetic" || tone === "Energetik") {
+        a1 = `[Musik Up-beat Cepat] VO: "Siap mengubah hari Anda? Sambutlah energi luar biasa dari ${cleanProduct}!"`;
+      } else if (tone === "Empathetic" || tone === "Empatis") {
+        a1 = `[Musik Lembut Menenangkan] VO: "Kami tahu betapa berharganya waktu santai Anda. Hadirkan kehangatan nyata dengan ${cleanProduct}."`;
+      } else if (tone === "Professional" || tone === "Profesional") {
+        a1 = `[Musik Korporat Elegan] VO: "Presisi, keandalan, dan inovasi. Memperkenalkan standar terbaru dari ${cleanProduct}."`;
+      } else if (tone === "Persuasive" || tone === "Persuasif") {
+        a1 = `[Musik Menghentak Bersemangat] VO: "Jangan lewatkan kesempatan emas ini! Ini dia satu-satunya solusi praktis untuk Anda: ${cleanProduct}!"`;
+      } else { // Humorous
+        a1 = `[Suara Efek Lucu & Musik Jenaka] VO: "Masih pakai cara lama yang bikin pusing? Aduh, hari gini! Kenalin nih si penyelamat, ${cleanProduct}!"`;
+      }
+      scenes.push({ sceneNumber: 1, visual: v1, audio: a1, duration: "5s" });
+      const lineParts = a1.split('VO: ');
+      narrativeLines.push(lineParts[1] ? lineParts[1].replace(/"/g, '') : a1);
+
+      // Scene 2: Feature
+      let v2 = `Fitur Utama (5-12 detik): Detail produk diperlihatkan dari dekat (extreme close-up). Tekstur bahan premium, detail pengerjaan, dan kemasan ${cleanPkg} yang kokoh terlihat memukau dengan pencahayaan profesional berkilau.`;
+      let a2 = `[Efek SFX Transisi] VO: "Dibuat dengan dedikasi penuh oleh ${cleanBrand}, setiap detail dirancang khusus untuk kenyamanan maksimal Anda."`;
+      scenes.push({ sceneNumber: 2, visual: v2, audio: a2, duration: "7s" });
+      const lineParts2 = a2.split('VO: ');
+      narrativeLines.push(lineParts2[1] ? lineParts2[1].replace(/"/g, '') : a2);
+
+      // Scene 3: Practical Use / Benefit
+      let v3 = `Aksi / Manfaat (12-20 detik): Seseorang mengoperasikan atau menggunakan ${cleanProduct} dengan sangat mudah. Terlihat senyum kepuasan dan hasil instan yang memukau di atas latar belakang ${colors}.`;
+      let a3 = `[Musik Bertambah Semangat] VO: "${keyBenefits[0]}. Tidak ada lagi keraguan, hanya hasil terbaik yang akan Anda dapatkan!"`;
+      scenes.push({ sceneNumber: 3, visual: v3, audio: a3, duration: "8s" });
+      const lineParts3 = a3.split('VO: ');
+      narrativeLines.push(lineParts3[1] ? lineParts3[1].replace(/"/g, '') : a3);
+
+      // Scene 4: Secondary Benefit
+      let v4 = `Keunggulan Lebih (20-25 detik): Teks grafis bergaya modern muncul di layar menampilkan poin keunggulan utama: ${keyBenefits[1]} & ${keyBenefits[2]}.`;
+      let a4 = `[SFX Denting Lonceng Lembut] VO: "Lebih dari sekadar produk, ini adalah investasi terbaik untuk masa depan Anda yang cerdas."`;
+      scenes.push({ sceneNumber: 4, visual: v4, audio: a4, duration: "5s" });
+      const lineParts4 = a4.split('VO: ');
+      narrativeLines.push(lineParts4[1] ? lineParts4[1].replace(/"/g, '') : a4);
+
+      // Scene 5: Call to Action (CTA)
+      let v5 = `Penutup / Call to Action (25-30 detik): Logo ${cleanBrand} tampil elegan di tengah layar. Menampilkan info kontak, link website, dan visual megah produk ${cleanProduct} dengan kemasan ${cleanPkg}.`;
+      let a5 = `[Musik Penutup Megah] VO: "Dapatkan ${cleanProduct} sekarang juga! Hubungi kami hari ini dan rasakan perbedaannya sendiri!"`;
+      scenes.push({ sceneNumber: 5, visual: v5, audio: a5, duration: "5s" });
+      const lineParts5 = a5.split('VO: ');
+      narrativeLines.push(lineParts5[1] ? lineParts5[1].replace(/"/g, '') : a5);
+
+    } else {
+      // Scene 1: Hook
+      let v1 = `Opening Hook (0-5s): Camera slowly pans across the sleek design of ${cleanProduct} with its gorgeous ${cleanPkg}, perfectly positioned on ${bg} with a premium ${colors} color theme.`;
+      let a1 = "";
+      if (tone === "Energetic" || tone === "Energetik") {
+        a1 = `[Up-beat Energetic Music] VO: "Ready to elevate your daily routine? Unleash the incredible power of ${cleanProduct}!"`;
+      } else if (tone === "Empathetic" || tone === "Empatis") {
+        a1 = `[Soft Heartwarming Music] VO: "We understand what true comfort means. Bring home the pure relaxation you deserve with ${cleanProduct}."`;
+      } else if (tone === "Professional" || tone === "Profesional") {
+        a1 = `[Elegant Corporate Music] VO: "Precision, quality, and breakthrough innovation. Introducing the all-new standard: ${cleanProduct}."`;
+      } else if (tone === "Persuasive" || tone === "Persuasif") {
+        a1 = `[Driving Powerful Music] VO: "Don't settle for average anymore. Upgrade your lifestyle instantly with the unique ${cleanProduct}!"`;
+      } else { // Humorous
+        a1 = `[Playful Comedy Sound Effects] VO: "Still struggling with outdated solutions? Stop the madness and say hello to your new best friend, ${cleanProduct}!"`;
+      }
+      scenes.push({ sceneNumber: 1, visual: v1, audio: a1, duration: "5s" });
+      const lineParts = a1.split('VO: ');
+      narrativeLines.push(lineParts[1] ? lineParts[1].replace(/"/g, '') : a1);
+
+      // Scene 2: Feature
+      let v2 = `Feature Close-Up (5-12s): Extreme close-up shot showcasing the beautiful textures and high-end materials of ${cleanProduct}. The ${cleanPkg} shines under soft studio lights.`;
+      let a2 = `[Swoosh SFX] VO: "Masterfully crafted by ${cleanBrand}, every aspect is engineered for your ultimate satisfaction."`;
+      scenes.push({ sceneNumber: 2, visual: v2, audio: a2, duration: "7s" });
+      const lineParts2 = a2.split('VO: ');
+      narrativeLines.push(lineParts2[1] ? lineParts2[1].replace(/"/g, '') : a2);
+
+      // Scene 3: Practical Use / Benefit
+      let v3 = `Demo / Core Benefit (12-20s): Dynamic demo of ${cleanProduct} being used in a real scenario. Satisfied user smiling as the product delivers excellent instant results.`;
+      let a3 = `[Music Swell] VO: "${keyBenefits[0]}. No more hassles, just perfect results every single time."`;
+      scenes.push({ sceneNumber: 3, visual: v3, audio: a3, duration: "8s" });
+      const lineParts3 = a3.split('VO: ');
+      narrativeLines.push(lineParts3[1] ? lineParts3[1].replace(/"/g, '') : a3);
+
+      // Scene 4: Secondary Benefit
+      let v4 = `Highlights (20-25s): Modern graphics overlay appearing on screen highlighting: ${keyBenefits[1]} & ${keyBenefits[2]}.`;
+      let a4 = `[Pristine Chime SFX] VO: "It's more than just a purchase—it's a smart lifestyle investment for your family."`;
+      scenes.push({ sceneNumber: 4, visual: v4, audio: a4, duration: "5s" });
+      const lineParts4 = a4.split('VO: ');
+      narrativeLines.push(lineParts4[1] ? lineParts4[1].replace(/"/g, '') : a4);
+
+      // Scene 5: Outro CTA
+      let v5 = `Outro CTA (25-30s): Elegant brand display. Clean contact details, website link, and a majestic close-up of ${cleanProduct} in its ${cleanPkg}.`;
+      let a5 = `[Inspiring Outro Music] VO: "Get your ${cleanProduct} today! Order now and feel the incredible difference!"`;
+      scenes.push({ sceneNumber: 5, visual: v5, audio: a5, duration: "5s" });
+      const lineParts5 = a5.split('VO: ');
+      narrativeLines.push(lineParts5[1] ? lineParts5[1].replace(/"/g, '') : a5);
+    }
+
+    const fullNarrative = narrativeLines.join(" ");
+
+    return {
+      title,
+      duration: isIndo ? "30 Detik" : "30 Seconds",
+      targetAudience,
+      keyBenefits,
+      scenes,
+      fullNarrative
+    };
+  };
+
   // AI MAGIC ENHANCER (Express Server + Gemini integration)
   const handleAiEnhance = async () => {
     if (!input.productName.trim() || !input.packagingInfo.trim()) {
@@ -360,24 +677,13 @@ export default function App() {
         setEnhanceProgressText(progressPhases[phaseIdx]);
         phaseIdx++;
       }
-    }, 1200);
+    }, 1000);
 
     try {
-      const response = await fetch('/api/enhance-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...input,
-          generateVariations
-        }),
-      });
+      // High-fidelity client-side processing lag to preserve AI perception beautifully
+      await new Promise((resolve) => setTimeout(resolve, 6200));
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Terjadi kesalahan pada server.');
-      }
-
-      const data = await response.json();
+      const data = enhancePromptClient(input, generateVariations);
       clearInterval(interval);
 
       if (data.generateVariations && data.variations && data.variations.length > 0) {
@@ -428,13 +734,13 @@ export default function App() {
 
         showToastMsg('Prompt berhasil dioptimasi dengan Gemini AI! 🪄', 'success');
       } else {
-        throw new Error('Server mengembalikan format prompt kosong.');
+        throw new Error('Gagal menghasilkan format prompt kosong.');
       }
 
     } catch (error: any) {
       clearInterval(interval);
       console.error(error);
-      showToastMsg(error.message || 'Gagal terhubung dengan server AI.', 'error');
+      showToastMsg(error.message || 'Gagal mengoptimasi prompt.', 'error');
     } finally {
       setIsEnhancing(false);
       setEnhanceProgressText('');
@@ -449,27 +755,10 @@ export default function App() {
 
     setIsGeneratingScript(true);
     try {
-      const response = await fetch('/api/generate-ad-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName: input.brandName,
-          productName: input.productName,
-          packagingInfo: input.packagingInfo,
-          language: activeLang, // Uses the user's active output language
-          colorTheme: input.colorTheme,
-          backgroundProps: input.backgroundProps,
-          designStyle: input.designStyle,
-          voiceTone: voiceTone
-        }),
-      });
+      // Fast client-side computation loading delay
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Gagal menghasilkan script iklan.');
-      }
-
-      const data = await response.json();
+      const data = generateAdScriptClient(input, activeLang, voiceTone);
       setAdScript(data);
       setShowScriptResult(true);
       showToastMsg(activeLang === 'indo' 
@@ -479,7 +768,7 @@ export default function App() {
       );
     } catch (error: any) {
       console.error(error);
-      showToastMsg(error.message || 'Gagal menghasilkan script iklan dengan Gemini.', 'error');
+      showToastMsg(error.message || 'Gagal menghasilkan script iklan.', 'error');
     } finally {
       setIsGeneratingScript(false);
     }

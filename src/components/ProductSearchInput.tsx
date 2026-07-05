@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Database, AlertCircle, X, ChevronDown } from 'lucide-react';
+import { getOrLoadProducts, ProductItem } from '../utils/productDb';
 
 interface ProductSearchInputProps {
   value: string;
   onChange: (value: string) => void;
   onSelectProduct: (product: string, brand: string) => void;
-}
-
-interface ProductItem {
-  sku?: string;
-  product: string;
-  brand: string;
 }
 
 export default function ProductSearchInput({
@@ -29,7 +24,7 @@ export default function ProductSearchInput({
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchSuggestions(value);
-    }, 250);
+    }, 200); // slightly faster debounce since it's client-side
 
     return () => clearTimeout(delayDebounceFn);
   }, [value]);
@@ -37,13 +32,29 @@ export default function ProductSearchInput({
   const fetchSuggestions = async (query: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data);
+      const allProducts = await getOrLoadProducts();
+      const q = query.toLowerCase().trim();
+      
+      if (!q) {
+        setSuggestions(allProducts.slice(0, 100));
+        return;
       }
+      
+      const words = q.split(/\s+/).filter(Boolean);
+      const filtered = allProducts.filter(item => {
+        const prodLower = item.product.toLowerCase();
+        const brandLower = (item.brand || '').toLowerCase();
+        const skuLower = (item.sku || '').toLowerCase();
+        return words.every(word => 
+          prodLower.includes(word) || 
+          brandLower.includes(word) || 
+          skuLower.includes(word)
+        );
+      });
+      
+      setSuggestions(filtered.slice(0, 100));
     } catch (err) {
-      console.error('Error fetching product search suggestions:', err);
+      console.error('Error fetching product search suggestions client-side:', err);
     } finally {
       setLoading(false);
     }
