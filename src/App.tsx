@@ -212,16 +212,23 @@ export default function App() {
       const response = await fetch('/api/products/refresh', {
         method: 'POST',
       });
+      
+      const responseText = await response.text();
+      let responseData: any = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        responseData = { error: responseText.slice(0, 100) || `Status code: ${response.status}` };
+      }
+
       if (response.ok) {
-        const data = await response.json();
-        showToastMsg(`Berhasil sinkronisasi! ${data.count} produk terbaru siap digunakan 🚀`, 'success');
+        showToastMsg(`Berhasil sinkronisasi! ${responseData.count || 0} produk terbaru siap digunakan 🚀`, 'success');
       } else {
-        const errData = await response.json();
-        showToastMsg(`Gagal sinkronisasi: ${errData.error || 'Terjadi kesalahan'}`, 'error');
+        showToastMsg(`Gagal sinkronisasi: ${responseData.error || 'Terjadi kesalahan pada server'}`, 'error');
       }
     } catch (err: any) {
       console.error('Failed to sync CSV:', err);
-      showToastMsg('Gagal terhubung ke server untuk sinkronisasi CSV.', 'error');
+      showToastMsg(`Gagal terhubung ke server: ${err.message || 'Koneksi terputus'}`, 'error');
     } finally {
       setIsRefreshingCsv(false);
     }
