@@ -8,8 +8,8 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-const __filename = typeof import.meta.url !== 'undefined' ? fileURLToPath(import.meta.url) : '';
-const __dirname = __filename ? path.dirname(__filename) : process.cwd();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
