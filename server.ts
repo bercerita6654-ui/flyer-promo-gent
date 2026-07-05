@@ -8,8 +8,13 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const resolvedFilename = typeof __filename !== "undefined"
+  ? __filename
+  : (typeof import.meta !== "undefined" && import.meta.url ? fileURLToPath(import.meta.url) : "");
+
+const resolvedDirname = typeof __dirname !== "undefined"
+  ? __dirname
+  : (resolvedFilename ? path.dirname(resolvedFilename) : process.cwd());
 
 async function startServer() {
   const app = express();
@@ -36,10 +41,10 @@ async function startServer() {
   try {
     let fallbackPath = path.join(process.cwd(), "fallback-products.json");
     if (!fs.existsSync(fallbackPath)) {
-      fallbackPath = path.join(__dirname, "../fallback-products.json");
+      fallbackPath = path.join(resolvedDirname, "../fallback-products.json");
     }
     if (!fs.existsSync(fallbackPath)) {
-      fallbackPath = path.join(__dirname, "fallback-products.json");
+      fallbackPath = path.join(resolvedDirname, "fallback-products.json");
     }
 
     if (fs.existsSync(fallbackPath)) {
