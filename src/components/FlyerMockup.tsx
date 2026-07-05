@@ -135,31 +135,31 @@ export default function FlyerMockup({ input }: FlyerMockupProps) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-5 bg-slate-900/50 border border-slate-800/80 rounded-2xl backdrop-blur-md relative overflow-hidden group shadow-xl" id="flyer-mockup-wrapper">
+    <div className="flex flex-col items-center justify-center p-5 bg-white border border-slate-200 rounded-3xl relative overflow-hidden group shadow-sm" id="flyer-mockup-wrapper">
       
       {/* Dynamic Background Aura */}
-      <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-50/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="flex items-center justify-between w-full mb-4 z-10">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-            <LayoutGrid className="w-4 h-4 text-indigo-400" />
+        <div className="flex items-center gap-2.5">
+          <span className="p-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+            <LayoutGrid className="w-4 h-4 text-indigo-600" />
           </span>
           <div>
-            <h4 className="text-xs font-display font-semibold text-slate-200">
+            <h4 className="text-xs font-display font-bold text-slate-800">
               Pratinjau Layout Visual Flyer
             </h4>
-            <p className="text-[9px] text-slate-500 font-mono tracking-wider uppercase">
+            <p className="text-[9px] text-slate-450 font-mono tracking-wider uppercase font-semibold">
               GRID RASIO: {aspectRatio}
             </p>
           </div>
         </div>
         
         <div className="flex gap-1">
-          <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[9px] font-mono text-slate-400">
+          <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[9px] font-mono text-slate-600 font-medium">
             {getCameraLabel()}
           </span>
-          <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[9px] font-mono text-slate-400">
+          <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[9px] font-mono text-slate-600 font-medium">
             {getLightingLabel()}
           </span>
         </div>
@@ -279,16 +279,16 @@ export default function FlyerMockup({ input }: FlyerMockupProps) {
 
       {/* Interactive visualizer theme status tags */}
       <div className="mt-4 text-center w-full z-10 font-sans">
-        <span className="text-xs text-slate-300 font-medium block">
-          Tema Pratinjau: <span className="text-amber-400">{theme.themeLabel}</span>
+        <span className="text-xs text-slate-700 font-bold block">
+          Tema Pratinjau: <span className="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100/50 inline-block text-[11px] font-mono">{theme.themeLabel}</span>
         </span>
         {colorTheme && (
-          <p className="text-[10px] text-slate-400 bg-slate-950/80 border border-slate-850 px-2.5 py-1 rounded-full mt-2 inline-block">
-            Palet: <span className="text-indigo-300 font-medium">{colorTheme}</span>
+          <p className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1 rounded-full mt-2.5 inline-block">
+            Palet: <span className="text-indigo-700 font-bold">{colorTheme}</span>
           </p>
         )}
         {backgroundProps && (
-          <p className="text-[9px] text-slate-500 italic block mt-1.5 truncate max-w-full px-2">
+          <p className="text-[9px] text-slate-500 italic block mt-2 truncate max-w-full px-2">
             Aksen: "{backgroundProps}"
           </p>
         )}

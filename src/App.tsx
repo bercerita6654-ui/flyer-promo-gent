@@ -4,6 +4,7 @@ import {
   Copy, 
   Check, 
   RotateCcw, 
+  RefreshCw,
   Info, 
   Layout, 
   ExternalLink, 
@@ -84,6 +85,30 @@ export default function App() {
   const [isGeneratingScript, setIsGeneratingScript] = useState<boolean>(false);
   const [scriptActiveTab, setScriptActiveTab] = useState<'storyboard' | 'narrative'>('storyboard');
   const [showScriptResult, setShowScriptResult] = useState<boolean>(false);
+  const [voiceTone, setVoiceTone] = useState<string>('Profesional');
+  const [isRefreshingCsv, setIsRefreshingCsv] = useState<boolean>(false);
+
+  const handleRefreshCsv = async () => {
+    setIsRefreshingCsv(true);
+    showToastMsg('Memulai sinkronisasi CSV stock list terbaru...', 'info');
+    try {
+      const response = await fetch('/api/products/refresh', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        showToastMsg(`Berhasil sinkronisasi! ${data.count} produk terbaru siap digunakan 🚀`, 'success');
+      } else {
+        const errData = await response.json();
+        showToastMsg(`Gagal sinkronisasi: ${errData.error || 'Terjadi kesalahan'}`, 'error');
+      }
+    } catch (err: any) {
+      console.error('Failed to sync CSV:', err);
+      showToastMsg('Gagal terhubung ke server untuk sinkronisasi CSV.', 'error');
+    } finally {
+      setIsRefreshingCsv(false);
+    }
+  };
 
   // 2. Load History from Local Storage on mount
   useEffect(() => {
@@ -306,7 +331,8 @@ export default function App() {
           language: activeLang, // Uses the user's active output language
           colorTheme: input.colorTheme,
           backgroundProps: input.backgroundProps,
-          designStyle: input.designStyle
+          designStyle: input.designStyle,
+          voiceTone: voiceTone
         }),
       });
 
@@ -338,6 +364,7 @@ export default function App() {
       content += `============================\n\n`;
       content += `Judul Kampanye: ${adScript.title}\n`;
       content += `Durasi: ${adScript.duration}\n`;
+      content += `Tone Suara / Gaya Bahasa: ${voiceTone}\n`;
       content += `Target Audiens: ${adScript.targetAudience}\n\n`;
       content += `Keunggulan Utama / Key Benefits:\n`;
       adScript.keyBenefits.forEach((b, idx) => {
@@ -454,7 +481,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070913] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white" id="main-app-container">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-indigo-600 selection:text-white" id="main-app-container">
       {/* Toast Alert Notifications */}
       <AnimatePresence>
         {toast && (
@@ -466,32 +493,32 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Futuristic backdrop mesh glow */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-fuchsia-600/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-[500px] h-[500px] bg-emerald-600/5 rounded-full blur-[130px] pointer-events-none" />
+      {/* Subtle modern backdrop mesh glow */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-fuchsia-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[130px] pointer-events-none" />
 
-      {/* Brand Header Navigation */}
-      <header className="border-b border-slate-900 bg-[#070913]/90 backdrop-blur-lg sticky top-0 z-40" id="app-header">
+      {/* Elegant Header Navigation */}
+      <header className="border-b border-slate-200 bg-white/95 backdrop-blur-lg sticky top-0 z-40 shadow-sm" id="app-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500 rounded-2xl shadow-xl shadow-indigo-500/20 relative group overflow-hidden" id="header-logo">
+            <div className="p-3 bg-gradient-to-tr from-indigo-500 via-purple-500 to-fuchsia-500 rounded-2xl shadow-md shadow-indigo-500/10 relative group overflow-hidden" id="header-logo">
               <Sparkles className="w-5 h-5 text-white animate-pulse" />
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
             </div>
             <div>
-              <h1 className="text-xl font-display font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-fuchsia-300 bg-clip-text text-transparent">
+              <h1 className="text-xl font-display font-black tracking-tight text-slate-800">
                 Flyer Prompt Generator AI
               </h1>
-              <p className="text-xs text-slate-400 font-sans">
+              <p className="text-xs text-slate-500 font-sans font-medium">
                 Rancang prompt visual iklan produk 8K fotorealistik untuk Midjourney, DALL-E & Stable Diffusion
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900/80 border border-slate-800 rounded-full text-[11px] font-mono text-indigo-400 font-semibold shadow-inner">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[10px] font-mono text-indigo-650 font-bold shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
               <span>GEMINI 3.5 INTEL</span>
             </div>
           </div>
@@ -510,32 +537,47 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in" id="app-grid-layout">
           
           {/* LEFT SIDEBAR: Comprehensive Parameters Builder (7 cols) */}
-          <section className="lg:col-span-7 bg-[#0b0f19]/80 border border-slate-900 rounded-3xl p-6 shadow-2xl relative" id="left-form-panel">
+          <section className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative" id="left-form-panel">
             
             {/* Glossy top border line */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500/50 via-purple-500/50 to-fuchsia-500/50" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500" />
 
-            <div className="flex items-center justify-between border-b border-slate-900 pb-5 mb-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
               <div className="flex items-center gap-3">
-                <span className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/10">
+                <span className="p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600">
                   <Compass className="w-5 h-5" />
                 </span>
                 <div>
-                  <h2 className="text-md sm:text-lg font-display font-bold text-slate-100">
+                  <h2 className="text-md sm:text-lg font-display font-bold text-slate-800">
                     Konfigurator Detail Flyer
                   </h2>
-                  <p className="text-xs text-slate-500 font-sans">Atur spesifikasi visual produk dan konsep iklan Anda</p>
+                  <p className="text-xs text-slate-500 font-sans font-medium">Atur spesifikasi visual produk dan konsep iklan Anda</p>
                 </div>
               </div>
               
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white font-sans font-medium px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 transition-all shadow-inner"
-                id="reset-form-btn"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset Form
-              </button>
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRefreshCsv}
+                  disabled={isRefreshingCsv}
+                  className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-sans font-bold px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition-all shadow-sm disabled:opacity-50"
+                  id="refresh-csv-btn"
+                  title="Sinkronisasi data stock list terbaru dari Google Sheets"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingCsv ? 'animate-spin' : ''}`} />
+                  {isRefreshingCsv ? 'Syncing...' : 'Sync CSV Stock List'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="flex items-center gap-1.5 text-xs text-slate-550 hover:text-slate-800 font-sans font-bold px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all shadow-sm"
+                  id="reset-form-btn"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset Form
+                </button>
+              </div>
             </div>
 
             <div className="space-y-5 font-sans">
@@ -543,7 +585,7 @@ export default function App() {
               {/* BRAND INPUT & PRODUCT INPUT ROW */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
                 <div className="sm:col-span-4 form-group" id="brand-input-group">
-                  <label htmlFor="brandName" className="block text-xs font-semibold text-slate-300 mb-2 tracking-wider uppercase">
+                  <label htmlFor="brandName" className="block text-xs font-bold text-slate-500 mb-2 tracking-wide uppercase">
                     Nama Merek / Brand
                   </label>
                   <input
@@ -552,12 +594,12 @@ export default function App() {
                     value={input.brandName}
                     onChange={(e) => handleInputChange('brandName', e.target.value)}
                     placeholder="Contoh: Senja Brew..."
-                    className="w-full px-4 py-3 bg-[#06080e] border border-slate-850 hover:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 placeholder-slate-700 text-sm transition-all outline-none shadow-inner"
+                    className="w-full px-4 py-3 bg-slate-50/55 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-450 text-sm transition-all outline-none"
                   />
                 </div>
 
                 <div className="sm:col-span-8 form-group" id="product-input-group">
-                  <label htmlFor="productName" className="block text-xs font-semibold text-slate-300 mb-2 tracking-wider uppercase">
+                  <label htmlFor="productName" className="block text-xs font-bold text-slate-500 mb-2 tracking-wide uppercase">
                     Nama / Jenis Produk <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <ProductSearchInput
@@ -576,7 +618,7 @@ export default function App() {
 
               {/* PACKAGING DETAIL */}
               <div className="form-group" id="packaging-input-group">
-                <label htmlFor="packagingInfo" className="block text-xs font-semibold text-slate-300 mb-2 tracking-wider uppercase">
+                <label htmlFor="packagingInfo" className="block text-xs font-bold text-slate-500 mb-2 tracking-wide uppercase">
                   Deskripsi / Kemasan Produk <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
@@ -585,14 +627,14 @@ export default function App() {
                   value={input.packagingInfo}
                   onChange={(e) => handleInputChange('packagingInfo', e.target.value)}
                   placeholder="Contoh: Botol PET 250ml dingin berkabut embun, Box kertas serat daur ulang..."
-                  className="w-full px-4 py-3 bg-[#06080e] border border-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 placeholder-slate-700 text-sm transition-all outline-none shadow-inner"
+                  className="w-full px-4 py-3 bg-slate-50/55 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-450 text-sm transition-all outline-none"
                   required
                 />
               </div>
 
               {/* AUDIENCE / STYLE SELECTOR */}
               <div className="form-group" id="style-input-group">
-                <label className="block text-xs font-semibold text-slate-300 mb-2.5 tracking-wider uppercase">
+                <label className="block text-xs font-bold text-slate-500 mb-2.5 tracking-wide uppercase">
                   Gaya Desain & Target Audiens
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -601,10 +643,10 @@ export default function App() {
                       key={style}
                       type="button"
                       onClick={() => handleInputChange('designStyle', style)}
-                      className={`py-3 px-3 rounded-xl border text-xs font-bold tracking-tight transition-all flex flex-col items-center justify-center gap-1.5 ${
+                      className={`py-3 px-3 rounded-2xl border text-xs font-bold tracking-tight transition-all flex flex-col items-center justify-center gap-1.5 ${
                         input.designStyle === style
-                          ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-lg shadow-indigo-550/10'
-                          : 'bg-slate-950/40 border-slate-900 text-slate-400 hover:border-slate-800 hover:text-slate-200'
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                          : 'bg-slate-50/50 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
                       }`}
                       id={`style-btn-${style}`}
                     >
@@ -617,7 +659,7 @@ export default function App() {
                       {style === 'anak' && (
                         <>
                           <span className="text-base">🎈</span>
-                          <span>Anak-Anak / Ceria</span>
+                          <span>Anak / Ceria</span>
                         </>
                       )}
                       {style === 'dewasa' && (
@@ -632,10 +674,10 @@ export default function App() {
               </div>
 
               {/* COLLAPSIBLE ADVANCED DESIGN CONTROLS */}
-              <div className="pt-4 border-t border-slate-900" id="advanced-settings-accordion">
+              <div className="pt-5 border-t border-slate-100" id="advanced-settings-accordion">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-indigo-550" />
                     Parameter Estetika Fotografi Studio
                   </h3>
                 </div>
@@ -645,15 +687,15 @@ export default function App() {
                   {/* Camera Angle & Studio Lighting Selectors */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="cameraAngle" className="block text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                        <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                      <label htmlFor="cameraAngle" className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-indigo-600" />
                         Sudut Kamera (Shot Angle)
                       </label>
                       <select
                         id="cameraAngle"
                         value={input.cameraAngle}
                         onChange={(e) => handleInputChange('cameraAngle', e.target.value)}
-                        className="w-full px-3 py-2.5 bg-[#06080e] border border-slate-855 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
                       >
                         {CAMERA_ANGLES.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -662,15 +704,15 @@ export default function App() {
                     </div>
 
                     <div>
-                      <label htmlFor="lighting" className="block text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                        <Sun className="w-3.5 h-3.5 text-indigo-400" />
+                      <label htmlFor="lighting" className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sun className="w-3.5 h-3.5 text-indigo-600" />
                         Pencahayaan (Lighting)
                       </label>
                       <select
                         id="lighting"
                         value={input.lighting}
                         onChange={(e) => handleInputChange('lighting', e.target.value)}
-                        className="w-full px-3 py-2.5 bg-[#06080e] border border-slate-855 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
                       >
                         {LIGHTINGS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -681,7 +723,7 @@ export default function App() {
 
                   {/* CUSTOM BACKGROUND DECORATIONS */}
                   <div>
-                    <label htmlFor="backgroundProps" className="block text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wide">
+                    <label htmlFor="backgroundProps" className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">
                       Dekorasi & Ornamen Latar Belakang (Props)
                     </label>
                     <input
@@ -690,9 +732,9 @@ export default function App() {
                       value={input.backgroundProps}
                       onChange={(e) => handleInputChange('backgroundProps', e.target.value)}
                       placeholder="Contoh: kelopak bunga lavender segar, cipratan air jernih berkilau, bayangan jendela dedaunan..."
-                      className="w-full px-4 py-3 bg-[#06080e] border border-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 placeholder-slate-700 text-xs transition-all outline-none shadow-inner"
+                      className="w-full px-4 py-3 bg-slate-50/55 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-400 text-xs transition-all outline-none"
                     />
-                    <span className="text-[10px] text-slate-500 mt-1 block leading-relaxed italic">
+                    <span className="text-[10px] text-slate-500 mt-1 block leading-relaxed italic font-medium">
                       Tips: Sebutkan objek organik penunjang produk (misal: "potongan buah apel segar", "butiran cokelat melayang") untuk menghidupkan suasana foto.
                     </span>
                   </div>
@@ -702,8 +744,8 @@ export default function App() {
                     
                     {/* Custom Color Theme */}
                     <div>
-                      <label htmlFor="colorTheme" className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1">
-                        <Palette className="w-3.5 h-3.5 text-indigo-455" />
+                      <label htmlFor="colorTheme" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex items-center gap-1">
+                        <Palette className="w-3.5 h-3.5 text-indigo-600" />
                         Palet Warna
                       </label>
                       <input
@@ -712,21 +754,21 @@ export default function App() {
                         value={input.colorTheme}
                         onChange={(e) => handleInputChange('colorTheme', e.target.value)}
                         placeholder="Contoh: Emas & Teal, Pastel, Sage Green..."
-                        className="w-full px-3 py-2 bg-[#06080e] border border-slate-850 rounded-xl text-xs text-slate-200 placeholder-slate-700 focus:border-indigo-500 outline-none transition-all"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:border-indigo-500 outline-none transition-all font-sans"
                       />
                     </div>
 
                     {/* Aspect Ratio */}
                     <div>
-                      <label htmlFor="aspectRatio" className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1">
-                        <Grid className="w-3.5 h-3.5 text-indigo-455" />
+                      <label htmlFor="aspectRatio" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex items-center gap-1">
+                        <Grid className="w-3.5 h-3.5 text-indigo-600" />
                         Rasio Flyer
                       </label>
                       <select
                         id="aspectRatio"
                         value={input.aspectRatio}
                         onChange={(e) => handleInputChange('aspectRatio', e.target.value as AspectRatio)}
-                        className="w-full px-3 py-2 bg-[#06080e] border border-slate-850 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
                       >
                         <option value="4:5">Portrait 4:5 (Sosmed Flyer)</option>
                         <option value="1:1">Square 1:1 (Instagram Feed)</option>
@@ -737,21 +779,21 @@ export default function App() {
 
                     {/* Interactive Preview Canvas Theme */}
                     <div>
-                      <label htmlFor="previewTheme" className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide flex items-center justify-between">
+                      <label htmlFor="previewTheme" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <Palette className="w-3.5 h-3.5 text-fuchsia-400" />
+                          <Palette className="w-3.5 h-3.5 text-fuchsia-550" />
                           Gaya Mockup
                         </span>
-                        <span className="text-[9px] text-indigo-400 font-semibold font-mono tracking-wider flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${systemTheme === 'dark' ? 'bg-indigo-400' : 'bg-fuchsia-400'}`} />
-                          {systemTheme === 'dark' ? 'SYS DARK 🌙' : 'SYS LIGHT ☀️'}
+                        <span className="text-[9px] text-indigo-600 font-bold font-mono tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                          LIGHT MODE
                         </span>
                       </label>
                       <select
                         id="previewTheme"
                         value={input.previewTheme}
                         onChange={(e) => handleInputChange('previewTheme', e.target.value)}
-                        className="w-full px-3 py-2 bg-[#06080e] border border-slate-850 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
                       >
                         <option value="minimal-slate">Cool Minimal Slate 💼</option>
                         <option value="warm-espresso">Warm Espresso ☕</option>
@@ -764,8 +806,8 @@ export default function App() {
 
                     {/* Output Language Selector */}
                     <div>
-                      <label htmlFor="outputLanguage" className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1">
-                        <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                      <label htmlFor="outputLanguage" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex items-center gap-1">
+                        <Globe className="w-3.5 h-3.5 text-indigo-600" />
                         Bahasa Hasil Prompt
                       </label>
                       <select
@@ -776,7 +818,7 @@ export default function App() {
                           setActiveLang(lang);
                           showToastMsg(`Bahasa output diatur ke: ${lang === 'eng' ? 'Inggris' : 'Indonesia'} 🌐`, 'info');
                         }}
-                        className="w-full px-3 py-2 bg-[#06080e] border border-slate-850 rounded-xl text-xs text-slate-200 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all cursor-pointer font-sans"
                       >
                         <option value="eng">Bahasa Inggris (Sangat Direkomendasikan) 🇺🇸</option>
                         <option value="indo">Bahasa Indonesia 🇮🇩</option>
@@ -787,7 +829,7 @@ export default function App() {
 
                   {/* AI target engine */}
                   <div className="form-group pt-1">
-                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
                       Target Pembuat Gambar AI
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -801,10 +843,10 @@ export default function App() {
                               showToastMsg('Target diatur ke Google Imagen 3! 🌐', 'success');
                             }
                           }}
-                          className={`py-2 px-1 rounded-xl border text-[10px] font-mono uppercase font-bold transition-all ${
+                          className={`py-2.5 px-1 rounded-xl border text-[10px] font-mono uppercase font-bold transition-all ${
                             input.aiPlatform === platform
-                              ? 'bg-indigo-600/10 border-indigo-500 text-indigo-400'
-                              : 'bg-slate-950/40 border-slate-900 text-slate-500 hover:border-slate-850 hover:text-slate-300'
+                              ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                              : 'bg-slate-50/50 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
                           }`}
                           id={`platform-btn-${platform}`}
                         >
@@ -821,10 +863,10 @@ export default function App() {
               </div>
 
               {/* Complexity Level Selector */}
-              <div className="mt-5 p-4 bg-slate-900/40 border border-slate-850/60 rounded-2xl space-y-3" id="complexity-level-card">
+              <div className="mt-5 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3" id="complexity-level-card">
                 <div className="flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-indigo-400" />
-                  <span className="text-xs font-display font-bold text-slate-200">
+                  <Sliders className="w-4 h-4 text-indigo-600" />
+                  <span className="text-xs font-display font-bold text-slate-700">
                     Tingkat Kompleksitas AI Enhancer
                   </span>
                 </div>
@@ -841,8 +883,8 @@ export default function App() {
                         }}
                         className={`py-2 px-1 rounded-xl border text-[10px] font-sans font-bold uppercase tracking-wider transition-all flex flex-col items-center justify-center min-h-[36px] ${
                           isActive
-                            ? 'bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border-indigo-500 text-indigo-400 shadow-md shadow-indigo-500/5'
-                            : 'bg-slate-950/40 border-slate-900 text-slate-500 hover:border-slate-850 hover:text-slate-400'
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                            : 'bg-slate-50/50 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
                         }`}
                         id={`complexity-btn-${level}`}
                       >
@@ -855,7 +897,7 @@ export default function App() {
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-slate-400 leading-normal">
+                <p className="text-[10px] text-slate-500 leading-normal font-medium">
                   {(input.complexityLevel || 'standard') === 'simple' && '⚡ Prompt minimalis, fokus pada kejelasan produk tanpa hiasan berlebih.'}
                   {(input.complexityLevel || 'standard') === 'standard' && '🎯 Visualisasi komersial seimbang dengan detail studio foto profesional.'}
                   {(input.complexityLevel || 'standard') === 'advanced' && '🔥 Visualisasi kaya & artistik dengan efek ray tracing, octane render, dan depth of field.'}
@@ -863,15 +905,15 @@ export default function App() {
               </div>
 
               {/* Creative Variations Toggle Switch */}
-              <div className="mt-5 p-4 bg-indigo-950/20 border border-indigo-950/40 rounded-2xl flex items-center justify-between gap-4" id="generate-variations-toggle-card">
+              <div className="mt-5 p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl flex items-center justify-between gap-4" id="generate-variations-toggle-card">
                 <div className="flex items-start gap-3">
-                  <span className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 mt-0.5">
+                  <span className="p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600 mt-0.5">
                     <Sparkles className="w-4 h-4" />
                   </span>
                   <div>
-                    <h4 className="text-xs font-display font-bold text-slate-200">Hasilkan 3 Variasi Kreatif sekaligus</h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
-                      Rancang 3 gaya prompt siap-pakai: <span className="text-indigo-400 font-semibold">Modern Minimalist</span>, <span className="text-purple-400 font-semibold">Cinematic Dramatic</span>, dan <span className="text-fuchsia-400 font-semibold">Bright Commercial</span>.
+                    <h4 className="text-xs font-display font-bold text-slate-700">Hasilkan 3 Variasi Kreatif sekaligus</h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed mt-0.5 font-medium">
+                      Rancang 3 gaya prompt siap-pakai: <span className="text-indigo-600 font-bold">Modern Minimalist</span>, <span className="text-purple-600 font-bold">Cinematic Dramatic</span>, dan <span className="text-fuchsia-600 font-bold">Bright Commercial</span>.
                     </p>
                   </div>
                 </div>
@@ -908,10 +950,10 @@ export default function App() {
                   type="button"
                   onClick={handleOfflineGenerate}
                   disabled={isEnhancing}
-                  className="sm:col-span-5 py-3.5 px-4 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="sm:col-span-5 py-3.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-850 font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                   id="generate-standard-btn"
                 >
-                  <FileText className="w-4 h-4 text-slate-400" />
+                  <FileText className="w-4 h-4 text-slate-500" />
                   Hasilkan Prompt Standar
                 </button>
 
@@ -920,12 +962,12 @@ export default function App() {
                   type="button"
                   onClick={handleAiEnhance}
                   disabled={isEnhancing}
-                  className="sm:col-span-7 py-3.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-600 hover:via-purple-700 hover:to-fuchsia-700 text-white font-sans font-bold rounded-xl text-xs transition-all relative overflow-hidden flex items-center justify-center gap-2 group shadow-xl shadow-indigo-950/30 active:scale-[0.98] disabled:opacity-50"
+                  className="sm:col-span-7 py-3.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-600 hover:via-purple-700 hover:to-fuchsia-700 text-white font-sans font-bold rounded-xl text-xs transition-all relative overflow-hidden flex items-center justify-center gap-2 group shadow-md shadow-indigo-550/10 active:scale-[0.98] disabled:opacity-50"
                   id="generate-ai-magic-btn"
                 >
                   {isEnhancing ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4.5 h-4.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                       <span>Gemini Memformulasikan...</span>
                     </div>
                   ) : (
@@ -947,7 +989,7 @@ export default function App() {
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className="p-3.5 bg-indigo-950/30 border border-indigo-900/40 rounded-xl flex items-center gap-3 text-xs text-indigo-300 font-sans"
+                    className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3 text-xs text-indigo-700 font-sans font-bold shadow-sm"
                     id="ai-loading-progress-panel"
                   >
                     <div className="relative flex h-2 w-2">
@@ -960,16 +1002,16 @@ export default function App() {
               </AnimatePresence>
 
               {/* GENERATE AD SCRIPT BUTTON & CARD */}
-              <div className="mt-5 p-4 bg-[#0a0d17] border border-slate-850/80 rounded-2xl space-y-3 shadow-md" id="ad-script-generator-card">
+              <div className="mt-5 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 shadow-sm" id="ad-script-generator-card">
                 <div className="flex items-start gap-3">
-                  <span className="p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl mt-0.5">
-                    <Megaphone className="w-4 h-4 animate-bounce" />
+                  <span className="p-2 bg-purple-50 border border-purple-100 text-purple-600 rounded-xl mt-0.5">
+                    <Megaphone className="w-4 h-4" />
                   </span>
                   <div>
-                    <h4 className="text-xs font-display font-bold text-slate-200">
+                    <h4 className="text-xs font-display font-bold text-slate-800">
                       {activeLang === 'indo' ? 'Naskah Video Iklan 30 Detik' : '30-Second Video Ad Script'}
                     </h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                    <p className="text-[10px] text-slate-505 leading-relaxed mt-0.5 font-medium">
                       {activeLang === 'indo' 
                         ? 'Buat naskah voiceover siap baca dan storyboard visual komersial 30 detik berdasarkan detail produk di atas.' 
                         : 'Generate a professional ready-to-read voiceover narrative and visual storyboard for a 30s video ad.'}
@@ -977,11 +1019,46 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Tone Suara Selector */}
+                <div className="space-y-2 pt-2.5 border-t border-slate-200" id="tone-suara-selector">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-sans font-bold text-slate-550 block">
+                      {activeLang === 'indo' ? 'Tone Suara Narasi / Gaya Bahasa:' : 'Voice Tone / Narrative Style:'}
+                    </label>
+                    <span className="text-[9px] font-mono font-bold text-purple-700 uppercase tracking-wider bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                      {voiceTone}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { key: 'Energetik', labelIndo: '⚡ Energetik', labelEng: '⚡ Energetic' },
+                      { key: 'Profesional', labelIndo: '💼 Prof', labelEng: '💼 Prof' },
+                      { key: 'Empatis', labelIndo: '❤️ Empatis', labelEng: '❤️ Empathy' },
+                      { key: 'Persuasif', labelIndo: '🔥 Persuasif', labelEng: '🔥 Persuade' },
+                      { key: 'Humoris', labelIndo: '🎭 Humoris', labelEng: '🎭 Humor' },
+                    ].map((tone) => (
+                      <button
+                        key={tone.key}
+                        type="button"
+                        onClick={() => setVoiceTone(tone.key)}
+                        title={activeLang === 'indo' ? tone.labelIndo : tone.labelEng}
+                        className={`py-2 px-1 rounded-xl text-[9px] font-sans font-bold text-center border transition-all truncate ${
+                          voiceTone === tone.key
+                            ? 'bg-purple-650 border-purple-600 text-white shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-550 hover:text-slate-800 hover:border-slate-350 shadow-sm'
+                        }`}
+                      >
+                        {activeLang === 'indo' ? tone.labelIndo.split(' ')[1] || tone.labelIndo : tone.labelEng.split(' ')[1] || tone.labelEng}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleGenerateAdScript}
                   disabled={isGeneratingScript || isEnhancing}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-950/10 active:scale-[0.98] disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50"
                   id="generate-ad-script-btn"
                 >
                   {isGeneratingScript ? (
@@ -1192,9 +1269,14 @@ export default function App() {
                           {activeLang === 'indo' ? 'Hasil Naskah Iklan 30s' : '30s Ad Script Result'}
                         </h3>
                       </div>
-                      <span className="text-[10px] font-mono bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20 font-bold uppercase tracking-wider">
-                        {adScript.duration}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/20 font-bold uppercase tracking-wider">
+                          {voiceTone}
+                        </span>
+                        <span className="text-[9px] font-mono bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20 font-bold uppercase tracking-wider">
+                          {adScript.duration}
+                        </span>
+                      </div>
                     </div>
                     <h4 className="text-sm font-sans font-bold text-slate-100 italic">
                       "{adScript.title}"

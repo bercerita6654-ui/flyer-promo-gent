@@ -212,6 +212,78 @@ async function startServer() {
     }
   });
 
+  // Forced Refresh API Route
+  app.post("/api/products/refresh", async (req, res) => {
+    try {
+      console.log("Forced refresh of products CSV requested...");
+      const primaryUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
+      const fallbackUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCxz1GPm7QU9IS1yBiSjvIdNTLUsvvplOCyT_R3XH4O-LuVbHoY_bXn1LTH5lpnlolJ29BhUgEdnFm/pub?output=csv&gid=1564332470';
+      
+      let response = await fetch(primaryUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      if (!response.ok) {
+        response = await fetch(fallbackUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+      }
+      
+      if (!response.ok) throw new Error(`Failed to fetch CSV from Google Sheet, status: ${response.status}`);
+      
+      const text = await response.text();
+      const lines = text.split('\n');
+      const items: Array<{ sku: string, product: string, brand: string }> = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.trim() === "") continue;
+        
+        const cols = parseCsvLine(line);
+        const sku = cols[0];     // Column 1 (index 0)
+        const product = cols[2]; // Column 3 (index 2)
+        const brand = cols[6];   // Column 7 (index 6)
+        
+        if (product && product.trim() !== "" && product !== 'Description') {
+          items.push({
+            sku: cleanCsvValue(sku || ''),
+            product: cleanCsvValue(product),
+            brand: cleanCsvValue(brand || '')
+          });
+        }
+      }
+
+      if (items.length > 0) {
+        cachedProducts = items;
+        lastFetchTime = Date.now();
+        
+        // Write to fallback file to persist
+        try {
+          let fallbackPath = path.join(process.cwd(), "fallback-products.json");
+          if (!fs.existsSync(fallbackPath)) {
+            fallbackPath = path.join(__dirname, "../fallback-products.json");
+          }
+          if (!fs.existsSync(fallbackPath)) {
+            fallbackPath = path.join(__dirname, "fallback-products.json");
+          }
+          fs.writeFileSync(fallbackPath, JSON.stringify(items, null, 2), "utf8");
+        } catch (errWrite) {
+          console.error("Failed to write to fallback-products.json during forced refresh:", errWrite);
+        }
+        return res.json({ success: true, count: items.length });
+      } else {
+        return res.status(400).json({ error: "No products found in fetched CSV" });
+      }
+    } catch (err: any) {
+      console.error("Forced refresh failed:", err);
+      return res.status(500).json({ error: err.message || "Failed to refresh CSV" });
+    }
+  });
+
   // API Routes
   app.post("/api/enhance-prompt", async (req, res) => {
     try {
@@ -366,7 +438,8 @@ async function startServer() {
         language,
         colorTheme,
         backgroundProps,
-        designStyle
+        designStyle,
+        voiceTone
       } = req.body;
 
       if (!productName) {
@@ -385,6 +458,7 @@ async function startServer() {
         - Aesthetic / Design Style: ${designStyle || "Modern Minimalist"}
         - Main Color Theme: ${colorTheme || "Harmonious"}
         - Visual Elements / Background: ${backgroundProps || "Elegant accessories"}
+        - Voice/Narrative Tone: ${voiceTone || "Professional"}
 
         Target Duration: Exactly 30 seconds.
         Response Language: ${isIndo ? 'Indonesian (Bahasa Indonesia)' : 'English'}. All script content, copy, narration, and scene descriptions MUST be written in this language. Make it sound extremely professional, catchy, energetic, and native.
@@ -408,6 +482,7 @@ async function startServer() {
 
         Important rules:
         - Design a sequence of 4 to 6 scenes covering the 30-second duration.
+        - Ensure the voiceover narrative matches the chosen tone style (${voiceTone || "Professional"}) precisely, evoking the corresponding emotions (e.g., high energy/excitement for Energetic, authority/trust for Professional, warmth/understanding for Empathetic, urgency for Persuasive, playfulness/laughter for Humorous).
         - Ensure the tone is highly professional, persuasive, and captures attention in the first 3 seconds.
         - The visual descriptions should perfectly match the designated design style (${designStyle}) and color theme (${colorTheme}).
         - Do not include any markdown code blocks, backticks, or explanation. Return ONLY the raw JSON object.

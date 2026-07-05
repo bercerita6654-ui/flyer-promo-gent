@@ -81,35 +81,39 @@ export default function Presets({ onSelectPreset }: PresetsProps) {
   };
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm shadow-xl" id="presets-container">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="flex items-center justify-center p-1.5 bg-amber-500/15 border border-amber-500/20 rounded-lg">
-          <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden" id="presets-container">
+      {/* Decorative top header accent */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-450 via-orange-400 to-amber-500/80" />
+      
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="flex items-center justify-center p-2 bg-amber-50 border border-amber-200 rounded-xl">
+          <Flame className="w-4 h-4 text-amber-600 animate-pulse" />
         </span>
-        <h3 className="text-md font-display font-bold text-slate-200">
+        <h3 className="text-base font-display font-bold text-slate-800">
           Template Inspirasi Produk Cepat
         </h3>
       </div>
-      <p className="text-xs text-slate-400 mb-4 font-sans leading-relaxed">
+      <p className="text-xs text-slate-500 mb-5 font-sans leading-relaxed">
         Pilih salah satu template siap pakai di bawah untuk memuat skenario produk dengan parameter visual lengkap secara instan.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="presets-grid">
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" id="presets-grid">
         {PRESETS.map((preset) => (
           <button
             key={preset.name}
             onClick={() => onSelectPreset(preset)}
-            className="flex flex-col items-start p-3.5 bg-slate-950/50 hover:bg-slate-900/60 border border-slate-850 hover:border-slate-700/60 rounded-xl transition-all duration-200 text-left group"
+            className="flex flex-col items-start p-4 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 hover:border-slate-300 rounded-2xl transition-all duration-300 text-left group hover:shadow-sm"
             id={`preset-btn-${preset.name.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            <div className="flex items-center gap-2 mb-1.5 w-full">
-              <span className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg group-hover:scale-110 transition-transform">
+            <div className="flex items-center gap-2.5 mb-2 w-full">
+              <span className="p-2 bg-white border border-slate-200 rounded-xl group-hover:scale-105 transition-transform shadow-sm">
                 {getIcon(preset.icon)}
               </span>
-              <span className="font-sans font-semibold text-slate-200 text-xs sm:text-sm group-hover:text-amber-300 transition-colors truncate">
+              <span className="font-sans font-bold text-slate-700 text-xs sm:text-sm group-hover:text-indigo-600 transition-colors truncate">
                 {preset.name}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed font-sans">
+            <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-sans">
               {preset.description}
             </p>
           </button>
