@@ -51,12 +51,19 @@ export function generateIndoPrompt(input: PromptInput): string {
     ? `Dekorasi latar tambahan: dilengkapi dengan dekorasi berupa ${input.backgroundProps} yang diatur secara estetis di sekeliling produk.` 
     : '';
 
-  return `Desain flyer iklan profesional untuk produk "${input.productName}" ${brandText}. Konteks kemasan: ${input.packagingInfo}. 
+  const pkgContext = input.packagingInfo?.trim()
+    ? `Konteks kemasan: ${input.packagingInfo.trim()}. `
+    : '';
+  const pkgDetail = input.packagingInfo?.trim()
+    ? ` (${input.packagingInfo.trim()})`
+    : '';
+
+  return `Desain flyer iklan profesional untuk produk "${input.productName}" ${brandText}. ${pkgContext}
 
 ${arText}. 
 Komposisi: 80% visual fotorealistik berkualitas tinggi dan 20% ruang teks kosong (negative space) bersih untuk penempatan promo. 
 Layout Utama: Modern grid-based infographic layout (tata letak kotak-panel rapi). 
-Bagian Atas: Menampilkan wujud produk utama "${input.productName}" (${input.packagingInfo}) yang terlihat premium, besar, dan sangat detail. 
+Bagian Atas: Menampilkan wujud produk utama "${input.productName}"${pkgDetail} yang terlihat premium, besar, dan sangat detail. 
 Bagian Tengah: Deretan ikon fitur produk, diikuti oleh grid foto-foto kecil yang menunjukkan produk sedang digunakan dalam berbagai skenario sehari-hari secara estetik. 
 Bagian Bawah: Panduan visual langkah-langkah 'How to Use' dengan foto dan kotak daftar 'Keunggulan'. 
 Footer: Baris footer elegan dengan placeholder untuk kontak. 
@@ -89,12 +96,19 @@ export function generateEngPrompt(input: PromptInput): string {
     ? `Background elements & props: styled with aesthetic ${input.backgroundProps} scattered artistically around the main product.` 
     : '';
 
-  return `Professional advertising flyer design for "${input.productName}" ${brandText}. Packaging context: ${input.packagingInfo}. 
+  const pkgContext = input.packagingInfo?.trim()
+    ? `Packaging context: ${input.packagingInfo.trim()}. `
+    : '';
+  const pkgDetail = input.packagingInfo?.trim()
+    ? ` and packaging (${input.packagingInfo.trim()})`
+    : '';
+
+  return `Professional advertising flyer design for "${input.productName}" ${brandText}. ${pkgContext}
 
 ${arText}. 
 Composition: 80% high-quality photorealistic visual elements and 20% negative space for typography. 
 Main Layout: Modern grid-based infographic layout (clean, organized panels). 
-Top Section: Highlights the primary product "${input.productName}" and its packaging (${input.packagingInfo}) rendered in premium, large-scale, highly detailed closeups. 
+Top Section: Highlights the primary product "${input.productName}"${pkgDetail} rendered in premium, large-scale, highly detailed closeups. 
 Middle Section: Row of sleek product feature icons, accompanied by a clean grid of lifestyle action shots showing the product being used in daily scenarios. 
 Bottom Section: Step-by-step visual "How to Use" guide with photos and a "Key Benefits" checklist card. 
 Footer: Elegant footer banner with minimalist contact placeholders. 

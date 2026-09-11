@@ -172,13 +172,13 @@ export default function App() {
     lighting: 'softbox-studio',
     backgroundProps: '',
     previewTheme: 'minimal-slate',
-    complexityLevel: 'standard',
+    complexityLevel: 'advanced',
   });
 
   const [promptIndo, setPromptIndo] = useState<string>('');
   const [promptEng, setPromptEng] = useState<string>('');
   const [showResult, setShowResult] = useState<boolean>(false);
-  const [activeLang, setActiveLang] = useState<'indo' | 'eng'>('eng'); // English is best for image generators
+  const [activeLang, setActiveLang] = useState<'indo' | 'eng'>('indo'); // Default Bahasa Indonesia as requested
   const [showAdvanced, setShowAdvanced] = useState<boolean>(true); // Kept visible for rich options
   const [history, setHistory] = useState<SavedPrompt[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -250,7 +250,7 @@ export default function App() {
 
   // 3. Real-time background prompt generation (offline mode)
   useEffect(() => {
-    if (input.productName && input.packagingInfo && !isAiEnhanced) {
+    if (input.productName && !isAiEnhanced) {
       const pIndo = generateIndoPrompt(input);
       const pEng = generateEngPrompt(input);
       setPromptIndo(pIndo);
@@ -295,16 +295,20 @@ export default function App() {
   };
 
   const handleOfflineGenerate = () => {
-    if (!input.productName.trim() || !input.packagingInfo.trim()) {
-      showToastMsg('Mohon isi Nama Produk dan Detail Kemasan terlebih dahulu.', 'error');
+    if (!input.productName.trim()) {
+      showToastMsg('Mohon isi Nama / Jenis Produk terlebih dahulu.', 'error');
       return;
     }
 
-    const pIndo = generateIndoPrompt(input);
-    const pEng = generateEngPrompt(input);
-    
-    setPromptIndo(pIndo);
-    setPromptEng(pEng);
+    const enhanced = enhancePromptClient(input, generateVariations);
+    setPromptIndo(enhanced.promptIndo);
+    setPromptEng(enhanced.promptEng);
+    if (enhanced.variations && enhanced.variations.length > 0) {
+      setVariations(enhanced.variations);
+      setSelectedVarIndex(0);
+    } else {
+      setVariations(null);
+    }
     setIsAiEnhanced(false);
     setShowResult(true);
 
@@ -313,8 +317,8 @@ export default function App() {
       id: Date.now().toString(),
       timestamp: Date.now(),
       input: { ...input },
-      promptIndo: pIndo,
-      promptEng: pEng,
+      promptIndo: enhanced.promptIndo,
+      promptEng: enhanced.promptEng,
       isAiEnhanced: false
     };
 
@@ -322,20 +326,20 @@ export default function App() {
     setHistory(updatedHistory);
     localStorage.setItem('flyer_prompt_history', JSON.stringify(updatedHistory));
 
-    showToastMsg('Prompt standar berhasil dibuat! ✨', 'success');
+    showToastMsg('Formula prompt berhasil dibuat! ✨', 'success');
   };
 
   // CLIENT SIDE EMULATORS TO REPLICATE GEMINI LOGIC ROBUSTLY AND PREVENT DEPLOYMENT/SYNC ERRORS
   const enhancePromptClient = (input: PromptInput, generateVariations: boolean) => {
     const cleanBrand = input.brandName ? input.brandName.trim() : "";
     const cleanProduct = input.productName.trim();
-    const cleanPkg = input.packagingInfo.trim();
+    const cleanPkg = input.packagingInfo ? input.packagingInfo.trim() : "";
     const cleanColor = input.colorTheme ? input.colorTheme.trim() : "harmonious and modern";
     const cleanProps = input.backgroundProps ? input.backgroundProps.trim() : "subtle matching elements";
     
     const ratioStr = input.aspectRatio || "1:1";
     const platform = input.aiPlatform || "midjourney";
-    const complexity = input.complexityLevel || "standard";
+    const complexity = input.complexityLevel || "advanced";
 
     // Camera Angle & Lighting Label Mapping for extra descriptive detail
     const cameraAngleText = input.cameraAngle || "professional eye-level studio photography";
@@ -390,9 +394,12 @@ export default function App() {
       const brandIntroEng = cleanBrand ? `brand "${cleanBrand}"` : "premium brand";
       const brandIntroIndo = cleanBrand ? `merek "${cleanBrand}"` : "merek premium";
 
+      const pkgSnippetEng = cleanPkg ? `Product Packaging Design: ${cleanPkg}. ` : "";
+      const pkgSnippetIndo = cleanPkg ? `Desain Kemasan Produk: ${cleanPkg}. ` : "";
+
       // English Prompts
       let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
-        `Product Packaging Design: ${cleanPkg}. ` +
+        pkgSnippetEng +
         `Aesthetic Theme: ${activeStyleEng}. ` +
         `Color Theme: ${cleanColor}. ` +
         `Camera Perspective: ${cameraAngleText}. ` +
@@ -404,7 +411,7 @@ export default function App() {
 
       // Indonesian Prompts
       let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
-        `Desain Kemasan Produk: ${cleanPkg}. ` +
+        pkgSnippetIndo +
         `Tema Estetika: ${activeStyleIndo}. ` +
         `Tema Warna: ${cleanColor}. ` +
         `Sudut Kamera: ${cameraAngleText}. ` +
@@ -416,8 +423,8 @@ export default function App() {
 
       // Complexity Level modifications
       if (complexity === 'simple') {
-        promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". Packaging: ${cleanPkg}. Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
-        promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". Kemasan: ${cleanPkg}. Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
+        promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
+        promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
       } else if (complexity === 'advanced') {
         promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
         promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;
@@ -654,8 +661,8 @@ export default function App() {
 
   // AI MAGIC ENHANCER (Express Server + Gemini integration)
   const handleAiEnhance = async () => {
-    if (!input.productName.trim() || !input.packagingInfo.trim()) {
-      showToastMsg('Mohon isi Nama Produk dan Detail Kemasan terlebih dahulu.', 'error');
+    if (!input.productName.trim()) {
+      showToastMsg('Mohon isi Nama / Jenis Produk terlebih dahulu.', 'error');
       return;
     }
 
@@ -864,9 +871,11 @@ export default function App() {
       lighting: 'softbox-studio',
       backgroundProps: '',
       previewTheme: 'minimal-slate',
+      complexityLevel: 'advanced',
     });
     setPromptIndo('');
     setPromptEng('');
+    setActiveLang('indo');
     setIsAiEnhanced(false);
     setShowResult(false);
     showToastMsg('Formulir berhasil dibersihkan.', 'info');
@@ -1036,16 +1045,15 @@ export default function App() {
               {/* PACKAGING DETAIL */}
               <div className="form-group" id="packaging-input-group">
                 <label htmlFor="packagingInfo" className="block text-xs font-bold text-slate-500 mb-2 tracking-wide uppercase">
-                  Deskripsi / Kemasan Produk <span className="text-rose-500 font-bold">*</span>
+                  Deskripsi / Kemasan Produk <span className="text-slate-400 font-normal lowercase tracking-normal">(opsional)</span>
                 </label>
                 <input
                   type="text"
                   id="packagingInfo"
                   value={input.packagingInfo}
                   onChange={(e) => handleInputChange('packagingInfo', e.target.value)}
-                  placeholder="Contoh: Botol PET 250ml dingin berkabut embun, Box kertas serat daur ulang..."
+                  placeholder="Contoh: Botol PET 250ml dingin berkabut embun, Box kertas serat daur ulang (opsional)..."
                   className="w-full px-4 py-3 bg-slate-50/55 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-450 text-sm transition-all outline-none"
-                  required
                 />
               </div>
 
@@ -1289,7 +1297,7 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(['simple', 'standard', 'advanced'] as const).map((level) => {
-                    const isActive = (input.complexityLevel || 'standard') === level;
+                    const isActive = (input.complexityLevel || 'advanced') === level;
                     return (
                       <button
                         key={level}
@@ -1315,9 +1323,9 @@ export default function App() {
                   })}
                 </div>
                 <p className="text-[10px] text-slate-500 leading-normal font-medium">
-                  {(input.complexityLevel || 'standard') === 'simple' && '⚡ Prompt minimalis, fokus pada kejelasan produk tanpa hiasan berlebih.'}
-                  {(input.complexityLevel || 'standard') === 'standard' && '🎯 Visualisasi komersial seimbang dengan detail studio foto profesional.'}
-                  {(input.complexityLevel || 'standard') === 'advanced' && '🔥 Visualisasi kaya & artistik dengan efek ray tracing, octane render, dan depth of field.'}
+                  {(input.complexityLevel || 'advanced') === 'simple' && '⚡ Prompt minimalis, fokus pada kejelasan produk tanpa hiasan berlebih.'}
+                  {(input.complexityLevel || 'advanced') === 'standard' && '🎯 Visualisasi komersial seimbang dengan detail studio foto profesional.'}
+                  {(input.complexityLevel || 'advanced') === 'advanced' && '🔥 Visualisasi kaya & artistik dengan efek ray tracing, octane render, dan depth of field.'}
                 </p>
               </div>
 
@@ -1359,44 +1367,17 @@ export default function App() {
                 </button>
               </div>
 
-              {/* ACTION CALL ROW: Traditional Generation & Dual Gemini AI Magic Enhance */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-4">
-                
-                {/* Traditional Direct Generator Button */}
+              {/* ACTION CALL ROW: Primary Generator Button */}
+              <div className="pt-4">
                 <button
                   type="button"
                   onClick={handleOfflineGenerate}
-                  disabled={isEnhancing}
-                  className="sm:col-span-5 py-3.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-850 font-sans font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                  className="w-full py-3.5 px-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 text-white font-sans font-bold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-500/15 active:scale-[0.99]"
                   id="generate-standard-btn"
                 >
-                  <FileText className="w-4 h-4 text-slate-500" />
-                  Hasilkan Prompt Standar
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Hasilkan Formula Prompt ✨</span>
                 </button>
-
-                {/* AI MAGIC GLOWING ENHANCER BUTTON */}
-                <button
-                  type="button"
-                  onClick={handleAiEnhance}
-                  disabled={isEnhancing}
-                  className="sm:col-span-7 py-3.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-600 hover:via-purple-700 hover:to-fuchsia-700 text-white font-sans font-bold rounded-xl text-xs transition-all relative overflow-hidden flex items-center justify-center gap-2 group shadow-md shadow-indigo-550/10 active:scale-[0.98] disabled:opacity-50"
-                  id="generate-ai-magic-btn"
-                >
-                  {isEnhancing ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Gemini Memformulasikan...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4.5 h-4.5 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
-                      <span>Optimasi dengan Gemini AI 🪄</span>
-                      {/* Glow effect on hover */}
-                      <span className="absolute right-0 top-0 bottom-0 w-12 bg-white/10 skew-x-12 translate-x-12 group-hover:-translate-x-96 transition-transform duration-1000 ease-out" />
-                    </>
-                  )}
-                </button>
-
               </div>
 
               {/* Loading progress detailed state */}
@@ -1532,8 +1513,23 @@ export default function App() {
                     <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 shadow-inner">
                       <button
                         onClick={() => {
+                          setActiveLang('indo');
+                          showToastMsg('Menampilkan Prompt Bahasa Indonesia.', 'info');
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold transition-all ${
+                          activeLang === 'indo'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        id="lang-indo-btn"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-indigo-300" />
+                        Indonesia
+                      </button>
+                      <button
+                        onClick={() => {
                           setActiveLang('eng');
-                          showToastMsg('Menampilkan Prompt Bahasa Inggris (Sangat disarankan).', 'info');
+                          showToastMsg('Menampilkan Prompt Bahasa Inggris (Cocok untuk Midjourney/DALL-E).', 'info');
                         }}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold transition-all ${
                           activeLang === 'eng'
@@ -1542,23 +1538,8 @@ export default function App() {
                         }`}
                         id="lang-eng-btn"
                       >
-                        <Globe className="w-3.5 h-3.5 text-indigo-300" />
+                        <Globe className="w-3.5 h-3.5 text-fuchsia-300" />
                         English
-                      </button>
-                      <button
-                        onClick={() => {
-                          setActiveLang('indo');
-                          showToastMsg('Menampilkan Prompt Bahasa Indonesia.', 'info');
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold transition-all ${
-                          activeLang === 'indo'
-                            ? 'bg-[#1b2130] text-slate-200 shadow-md'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        id="lang-indo-btn"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-fuchsia-400" />
-                        Indo
                       </button>
                     </div>
                   </div>

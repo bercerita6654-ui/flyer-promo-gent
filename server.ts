@@ -325,19 +325,19 @@ async function startServer() {
         complexityLevel
       } = req.body;
 
-      if (!productName || !packagingInfo) {
-        return res.status(400).json({ error: "Nama produk dan detail kemasan wajib diisi." });
+      if (!productName || !productName.trim()) {
+        return res.status(400).json({ error: "Nama / jenis produk wajib diisi." });
       }
 
       const cleanBrand = brandName ? brandName.trim() : "";
       const cleanProduct = productName.trim();
-      const cleanPkg = packagingInfo.trim();
+      const cleanPkg = packagingInfo ? packagingInfo.trim() : "";
       const cleanColor = colorTheme ? colorTheme.trim() : "harmonious and modern";
       const cleanProps = backgroundProps ? backgroundProps.trim() : "subtle matching elements";
       
       const ratioStr = aspectRatio || "1:1";
       const platform = aiPlatform || "midjourney";
-      const complexity = complexityLevel || "standard";
+      const complexity = complexityLevel || "advanced";
 
       // Camera Angle & Lighting Label Mapping for extra descriptive detail
       const cameraAngleText = cameraAngle || "professional eye-level studio photography";
@@ -392,9 +392,12 @@ async function startServer() {
         const brandIntroEng = cleanBrand ? `brand "${cleanBrand}"` : "premium brand";
         const brandIntroIndo = cleanBrand ? `merek "${cleanBrand}"` : "merek premium";
 
+        const pkgSnippetEng = cleanPkg ? `Product Packaging Design: ${cleanPkg}. ` : "";
+        const pkgSnippetIndo = cleanPkg ? `Desain Kemasan Produk: ${cleanPkg}. ` : "";
+
         // English Prompts
         let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
-          `Product Packaging Design: ${cleanPkg}. ` +
+          pkgSnippetEng +
           `Aesthetic Theme: ${activeStyleEng}. ` +
           `Color Theme: ${cleanColor}. ` +
           `Camera Perspective: ${cameraAngleText}. ` +
@@ -406,7 +409,7 @@ async function startServer() {
 
         // Indonesian Prompts
         let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
-          `Desain Kemasan Produk: ${cleanPkg}. ` +
+          pkgSnippetIndo +
           `Tema Estetika: ${activeStyleIndo}. ` +
           `Tema Warna: ${cleanColor}. ` +
           `Sudut Kamera: ${cameraAngleText}. ` +
@@ -418,8 +421,8 @@ async function startServer() {
 
         // Complexity Level modifications
         if (complexity === 'simple') {
-          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". Packaging: ${cleanPkg}. Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
-          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". Kemasan: ${cleanPkg}. Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
+          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
+          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
         } else if (complexity === 'advanced') {
           promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
           promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;
