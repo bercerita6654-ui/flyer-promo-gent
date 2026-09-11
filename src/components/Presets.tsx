@@ -81,7 +81,7 @@ export default function Presets({ onSelectPreset }: PresetsProps) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden" id="presets-container">
+    <div className="hidden bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden" id="presets-container">
       {/* Decorative top header accent */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-450 via-orange-400 to-amber-500/80" />
       

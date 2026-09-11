@@ -955,7 +955,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="main-content">
         
         {/* TOP COMPONENT: Preset Templates Selection */}
-        <section id="presets-section">
+        <section id="presets-section" className="hidden">
           <Presets onSelectPreset={handleSelectPreset} />
         </section>
 
