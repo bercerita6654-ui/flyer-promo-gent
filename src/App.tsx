@@ -163,6 +163,10 @@ export default function App() {
     brandName: '',
     productName: '',
     packagingInfo: '',
+    packagingOptions: [],
+    ctaSocial: '',
+    ctaWhatsApp: '',
+    tagline: '',
     designStyle: 'umum',
     aspectRatio: '4:5',
     aiPlatform: 'midjourney',
@@ -173,6 +177,7 @@ export default function App() {
     backgroundProps: '',
     previewTheme: 'minimal-slate',
     complexityLevel: 'advanced',
+    modelOption: 'product-only',
   });
 
   const [promptIndo, setPromptIndo] = useState<string>('');
@@ -333,7 +338,16 @@ export default function App() {
   const enhancePromptClient = (input: PromptInput, generateVariations: boolean) => {
     const cleanBrand = input.brandName ? input.brandName.trim() : "";
     const cleanProduct = input.productName.trim();
-    const cleanPkg = input.packagingInfo ? input.packagingInfo.trim() : "";
+    
+    const cleanPkgOptions = Array.isArray(input.packagingOptions) ? input.packagingOptions : [];
+    const cleanPkgText = input.packagingInfo ? input.packagingInfo.trim() : "";
+    const allPkg = [...cleanPkgOptions, ...(cleanPkgText ? [cleanPkgText] : [])].filter(Boolean);
+    const cleanPkg = allPkg.join(', ');
+
+    const cleanSocial = input.ctaSocial ? input.ctaSocial.trim() : "";
+    const cleanWa = input.ctaWhatsApp ? input.ctaWhatsApp.trim() : "";
+    const cleanTagline = input.tagline ? input.tagline.trim() : "";
+
     const cleanColor = input.colorTheme ? input.colorTheme.trim() : "harmonious and modern";
     const cleanProps = input.backgroundProps ? input.backgroundProps.trim() : "subtle matching elements";
     
@@ -388,17 +402,41 @@ export default function App() {
         activeStyleIndo = "Fotografi katalog dramatis sinematik, pencahayaan rim gelap chiaroscuro dramatis, bayangan volumetrik mendalam, latar belakang bertekstur gelap, refleksi hiper-realistis";
       } else if (styleOverride === "Bright Commercial") {
         activeStyleEng = "Vibrant bright commercial advertisement, energetic splash of liquid and flying organic ingredients, high-energy dynamic action shot, 3-point bright professional studio lights";
-        activeStyleIndo = "Iklan komersial cerah yang dinamis, cipratan cairan energik dan bahan-bahan organik beteberan, jepretan aksi dinamis berenergi tinggi, lampu studio profesional 3 titik yang terang";
+        activeStyleIndo = "Iklan komersial cerah yang dinamis, cipratan cairan energik dan bahan-bahan organik beterbangan, jepretan aksi dinamis berenergi tinggi, lampu studio profesional 3 titik yang terang";
       }
 
       const brandIntroEng = cleanBrand ? `brand "${cleanBrand}"` : "premium brand";
       const brandIntroIndo = cleanBrand ? `merek "${cleanBrand}"` : "merek premium";
 
-      const pkgSnippetEng = cleanPkg ? `Product Packaging Design: ${cleanPkg}. ` : "";
-      const pkgSnippetIndo = cleanPkg ? `Desain Kemasan Produk: ${cleanPkg}. ` : "";
+      const modelContextEng = input.modelOption === 'with-model'
+        ? 'Subject: Featuring a professional human model naturally holding and posing alongside the product. '
+        : 'Subject: Pure product only showcase, no human model present, full focus on the product object and packaging details. ';
+
+      const modelContextIndo = input.modelOption === 'with-model'
+        ? 'Subjek Utama: Menampilkan model manusia profesional yang memegang dan berpose bersama produk secara natural. '
+        : 'Subjek Utama: Hanya produk saja secara murni (Product Only) tanpa kehadiran model manusia, fokus penuh pada objek dan detail kemasan. ';
+
+      const negativePromptEng = 'Negative prompt: consistent product in reality, consistent product shape, consistent product color, high fidelity product realism, zero distortion, zero artifacts.';
+      const negativePromptIndo = 'Negative prompt: foto produk yang konsisten dengan aslinya, bentuk dan warna produk yang konsisten, tanpa distorsi, tanpa artefak aneh.';
+
+      const pkgSnippetEng = cleanPkg ? `Product Packaging & SKU: ${cleanPkg}. ` : "";
+      const pkgSnippetIndo = cleanPkg ? `Opsi & Kemasan SKU: ${cleanPkg}. ` : "";
+
+      const taglineEng = cleanTagline ? `Tagline: "${cleanTagline}"` : "";
+      const socialEng = cleanSocial ? `Social: ${cleanSocial}` : "";
+      const waEng = cleanWa ? `WhatsApp: ${cleanWa}` : "";
+      const ctaListEng = [taglineEng, socialEng, waEng].filter(Boolean).join(" | ");
+      const ctaSectionEng = ctaListEng ? `Footer / CTA Section: Displaying official promo & contact info (${ctaListEng}).` : "Footer: Elegant footer banner with minimalist contact placeholders.";
+
+      const taglineIndo = cleanTagline ? `Tagline: "${cleanTagline}"` : "";
+      const socialIndo = cleanSocial ? `Media Sosial: ${cleanSocial}` : "";
+      const waIndo = cleanWa ? `WhatsApp: ${cleanWa}` : "";
+      const ctaListIndo = [taglineIndo, socialIndo, waIndo].filter(Boolean).join(" | ");
+      const ctaSectionIndo = ctaListIndo ? `Footer / CTA Section: Menampilkan informasi kontak dan promosi resmi (${ctaListIndo}).` : "Footer: Baris footer elegan dengan placeholder untuk kontak.";
 
       // English Prompts
       let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
+        modelContextEng +
         pkgSnippetEng +
         `Aesthetic Theme: ${activeStyleEng}. ` +
         `Color Theme: ${cleanColor}. ` +
@@ -407,10 +445,12 @@ export default function App() {
         `Background Decor & Accents: ${cleanProps}. ` +
         `Composition Grid: 80% beautiful product central focus, 20% clean margins for copy text. ` +
         `Top section displays the product "${cleanProduct}". Middle section showcases key ingredients. Bottom section outlines clear benefits. ` +
-        `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}`;
+        `${ctaSectionEng} ` +
+        `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}. ${negativePromptEng}`;
 
       // Indonesian Prompts
       let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
+        modelContextIndo +
         pkgSnippetIndo +
         `Tema Estetika: ${activeStyleIndo}. ` +
         `Tema Warna: ${cleanColor}. ` +
@@ -419,12 +459,13 @@ export default function App() {
         `Properti & Dekorasi Latar Belakang: ${cleanProps}. ` +
         `Aturan Komposisi: 80% fokus utama pada produk di bagian tengah, 20% ruang kosong di pinggir untuk teks iklan. ` +
         `Bagian atas menampilkan produk "${cleanProduct}". Bagian tengah menunjukkan bahan utama/aksi. Bagian bawah menyediakan tempat untuk info keunggulan produk. ` +
-        `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}`;
+        `${ctaSectionIndo} ` +
+        `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}. ${negativePromptIndo}`;
 
       // Complexity Level modifications
       if (complexity === 'simple') {
-        promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
-        promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
+        promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${modelContextEng}${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo. ${negativePromptEng}`;
+        promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${modelContextIndo}${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi. ${negativePromptIndo}`;
       } else if (complexity === 'advanced') {
         promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
         promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;
@@ -1042,19 +1083,133 @@ export default function App() {
                 </div>
               </div>
 
-              {/* PACKAGING DETAIL */}
-              <div className="form-group" id="packaging-input-group">
-                <label htmlFor="packagingInfo" className="block text-xs font-bold text-slate-500 mb-2 tracking-wide uppercase">
-                  Deskripsi / Kemasan Produk <span className="text-slate-400 font-normal lowercase tracking-normal">(opsional)</span>
+              {/* PACKAGING / SKU MULTI-SELECT OPTIONS */}
+              <div className="form-group space-y-2.5" id="packaging-options-group">
+                <label className="block text-xs font-bold text-slate-500 tracking-wide uppercase">
+                  Opsi & Kode SKU Kemasan <span className="text-slate-400 font-normal lowercase tracking-normal">(pilih multi opsi / kustom)</span>
                 </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "SKU-01: Botol PET 250ml",
+                    "SKU-02: Botol Kaca Premium",
+                    "SKU-03: Sachet Aluminium Foil",
+                    "SKU-04: Kotak Karton / Box Eksklusif",
+                    "SKU-05: Jar Toples Kedap Udara",
+                    "SKU-06: Pouch Standing Zipper",
+                    "SKU-07: Kaleng Aerosol / Tin",
+                    "SKU-08: Tube Kosmetik Soft"
+                  ].map((pkgOption) => {
+                    const isSelected = input.packagingOptions?.includes(pkgOption);
+                    return (
+                      <button
+                        key={pkgOption}
+                        type="button"
+                        onClick={() => {
+                          const current = input.packagingOptions || [];
+                          const updated = isSelected
+                            ? current.filter(item => item !== pkgOption)
+                            : [...current, pkgOption];
+                          handleInputChange('packagingOptions', updated);
+                        }}
+                        className={`text-xs px-3 py-2 rounded-xl border font-medium transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        <span>{isSelected ? '✓' : '+'}</span>
+                        <span>{pkgOption}</span>
+                      </button>
+                    );
+                  })}
+                </div>
                 <input
                   type="text"
                   id="packagingInfo"
                   value={input.packagingInfo}
                   onChange={(e) => handleInputChange('packagingInfo', e.target.value)}
-                  placeholder="Contoh: Botol PET 250ml dingin berkabut embun, Box kertas serat daur ulang (opsional)..."
-                  className="w-full px-4 py-3 bg-slate-50/55 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-450 text-sm transition-all outline-none"
+                  placeholder="Atau ketik detail kemasan / SKU tambahan (opsional)..."
+                  className="w-full mt-2 px-4 py-3 bg-slate-50/55 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-450 text-sm transition-all outline-none"
                 />
+              </div>
+
+              {/* CTA & CONTACT / TAGLINE OPTIONS */}
+              <div className="p-4 bg-slate-50/60 border border-slate-200 rounded-2xl space-y-4" id="cta-options-group">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📢</span>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Opsi CTA, Tagline & Kontak (Footer Prompt)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label htmlFor="tagline" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase">
+                      Tagline / Slogan
+                    </label>
+                    <input
+                      type="text"
+                      id="tagline"
+                      value={input.tagline}
+                      onChange={(e) => handleInputChange('tagline', e.target.value)}
+                      placeholder="Cth: 100% Alami & Segar"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-400 text-xs transition-all outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="ctaSocial" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase">
+                      Media Sosial (Medsos)
+                    </label>
+                    <input
+                      type="text"
+                      id="ctaSocial"
+                      value={input.ctaSocial}
+                      onChange={(e) => handleInputChange('ctaSocial', e.target.value)}
+                      placeholder="Cth: @senjabrew.official"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-400 text-xs transition-all outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="ctaWhatsApp" className="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase">
+                      No WA Pemesanan
+                    </label>
+                    <input
+                      type="text"
+                      id="ctaWhatsApp"
+                      value={input.ctaWhatsApp}
+                      onChange={(e) => handleInputChange('ctaWhatsApp', e.target.value)}
+                      placeholder="Cth: 0812-3456-7890"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-800 placeholder-slate-400 text-xs transition-all outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* MODEL OPTION / SUBJEK PILIHAN */}
+              <div className="form-group space-y-2.5" id="model-option-group">
+                <label className="block text-xs font-bold text-slate-500 tracking-wide uppercase">
+                  Opsi Subjek Visual <span className="text-slate-400 font-normal lowercase tracking-normal">(produk saja atau dengan model)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { value: 'product-only', labelIndo: '📦 Produk Saja (Product Only)' },
+                    { value: 'with-model', labelIndo: '👤 Gunakan Model Manusia (With Model)' }
+                  ].map((opt) => {
+                    const isSelected = (input.modelOption || 'product-only') === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleInputChange('modelOption', opt.value)}
+                        className={`py-3 px-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                          isSelected
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                            : 'bg-slate-50/50 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                        }`}
+                        id={`model-option-${opt.value}`}
+                      >
+                        <span>{opt.labelIndo}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* AUDIENCE / STYLE SELECTOR */}

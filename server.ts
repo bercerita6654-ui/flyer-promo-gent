@@ -314,6 +314,10 @@ async function startServer() {
         brandName, 
         productName, 
         packagingInfo, 
+        packagingOptions,
+        ctaSocial,
+        ctaWhatsApp,
+        tagline,
         designStyle, 
         aspectRatio, 
         aiPlatform, 
@@ -331,7 +335,16 @@ async function startServer() {
 
       const cleanBrand = brandName ? brandName.trim() : "";
       const cleanProduct = productName.trim();
-      const cleanPkg = packagingInfo ? packagingInfo.trim() : "";
+      
+      const cleanPkgOptions = Array.isArray(packagingOptions) ? packagingOptions : [];
+      const cleanPkgText = packagingInfo ? packagingInfo.trim() : "";
+      const allPkg = [...cleanPkgOptions, ...(cleanPkgText ? [cleanPkgText] : [])].filter(Boolean);
+      const cleanPkg = allPkg.join(', ');
+
+      const cleanSocial = ctaSocial ? ctaSocial.trim() : "";
+      const cleanWa = ctaWhatsApp ? ctaWhatsApp.trim() : "";
+      const cleanTagline = tagline ? tagline.trim() : "";
+
       const cleanColor = colorTheme ? colorTheme.trim() : "harmonious and modern";
       const cleanProps = backgroundProps ? backgroundProps.trim() : "subtle matching elements";
       
@@ -392,11 +405,35 @@ async function startServer() {
         const brandIntroEng = cleanBrand ? `brand "${cleanBrand}"` : "premium brand";
         const brandIntroIndo = cleanBrand ? `merek "${cleanBrand}"` : "merek premium";
 
-        const pkgSnippetEng = cleanPkg ? `Product Packaging Design: ${cleanPkg}. ` : "";
-        const pkgSnippetIndo = cleanPkg ? `Desain Kemasan Produk: ${cleanPkg}. ` : "";
+        const modelContextEng = req.body.modelOption === 'with-model'
+          ? 'Subject: Featuring a professional human model naturally holding and posing alongside the product. '
+          : 'Subject: Pure product only showcase, no human model present, full focus on the product object and packaging details. ';
+
+        const modelContextIndo = req.body.modelOption === 'with-model'
+          ? 'Subjek Utama: Menampilkan model manusia profesional yang memegang dan berpose bersama produk secara natural. '
+          : 'Subjek Utama: Hanya produk saja secara murni (Product Only) tanpa kehadiran model manusia, fokus penuh pada objek dan detail kemasan. ';
+
+        const negativePromptEng = 'Negative prompt: consistent product in reality, consistent product shape, consistent product color, high fidelity product realism, zero distortion, zero artifacts.';
+        const negativePromptIndo = 'Negative prompt: foto produk yang konsisten dengan aslinya, bentuk dan warna produk yang konsisten, tanpa distorsi, tanpa artefak aneh.';
+
+        const pkgSnippetEng = cleanPkg ? `Product Packaging & SKU: ${cleanPkg}. ` : "";
+        const pkgSnippetIndo = cleanPkg ? `Opsi & Kemasan SKU: ${cleanPkg}. ` : "";
+
+        const taglineEng = cleanTagline ? `Tagline: "${cleanTagline}"` : "";
+        const socialEng = cleanSocial ? `Social: ${cleanSocial}` : "";
+        const waEng = cleanWa ? `WhatsApp: ${cleanWa}` : "";
+        const ctaListEng = [taglineEng, socialEng, waEng].filter(Boolean).join(" | ");
+        const ctaSectionEng = ctaListEng ? `Footer / CTA Section: Displaying official promo & contact info (${ctaListEng}).` : "Footer: Elegant footer banner with minimalist contact placeholders.";
+
+        const taglineIndo = cleanTagline ? `Tagline: "${cleanTagline}"` : "";
+        const socialIndo = cleanSocial ? `Media Sosial: ${cleanSocial}` : "";
+        const waIndo = cleanWa ? `WhatsApp: ${cleanWa}` : "";
+        const ctaListIndo = [taglineIndo, socialIndo, waIndo].filter(Boolean).join(" | ");
+        const ctaSectionIndo = ctaListIndo ? `Footer / CTA Section: Menampilkan informasi kontak dan promosi resmi (${ctaListIndo}).` : "Footer: Baris footer elegan dengan placeholder untuk kontak.";
 
         // English Prompts
         let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
+          modelContextEng +
           pkgSnippetEng +
           `Aesthetic Theme: ${activeStyleEng}. ` +
           `Color Theme: ${cleanColor}. ` +
@@ -405,10 +442,12 @@ async function startServer() {
           `Background Decor & Accents: ${cleanProps}. ` +
           `Composition Grid: 80% beautiful product central focus, 20% clean margins for copy text. ` +
           `Top section displays the product "${cleanProduct}". Middle section showcases key ingredients. Bottom section outlines clear benefits. ` +
-          `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}`;
+          `${ctaSectionEng} ` +
+          `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}. ${negativePromptEng}`;
 
         // Indonesian Prompts
         let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
+          modelContextIndo +
           pkgSnippetIndo +
           `Tema Estetika: ${activeStyleIndo}. ` +
           `Tema Warna: ${cleanColor}. ` +
@@ -417,12 +456,13 @@ async function startServer() {
           `Properti & Dekorasi Latar Belakang: ${cleanProps}. ` +
           `Aturan Komposisi: 80% fokus utama pada produk di bagian tengah, 20% ruang kosong di pinggir untuk teks iklan. ` +
           `Bagian atas menampilkan produk "${cleanProduct}". Bagian tengah menunjukkan bahan utama/aksi. Bagian bawah menyediakan tempat untuk info keunggulan produk. ` +
-          `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}`;
+          `${ctaSectionIndo} ` +
+          `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}. ${negativePromptIndo}`;
 
         // Complexity Level modifications
         if (complexity === 'simple') {
-          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo.`;
-          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi.`;
+          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${modelContextEng}${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo. ${negativePromptEng}`;
+          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${modelContextIndo}${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi. ${negativePromptIndo}`;
         } else if (complexity === 'advanced') {
           promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
           promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;

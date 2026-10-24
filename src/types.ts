@@ -8,6 +8,10 @@ export interface PromptInput {
   brandName: string;
   productName: string;
   packagingInfo: string;
+  packagingOptions: string[];
+  ctaSocial: string;
+  ctaWhatsApp: string;
+  tagline: string;
   designStyle: DesignStyle;
   aspectRatio: AspectRatio;
   aiPlatform: AIPlatform;
@@ -19,6 +23,7 @@ export interface PromptInput {
   backgroundProps: string;
   previewTheme: string;
   complexityLevel: 'simple' | 'standard' | 'advanced';
+  modelOption: 'product-only' | 'with-model';
 }
 
 export interface SavedPrompt {
@@ -38,6 +43,10 @@ export interface Preset {
   brandName: string;
   productName: string;
   packagingInfo: string;
+  packagingOptions?: string[];
+  ctaSocial?: string;
+  ctaWhatsApp?: string;
+  tagline?: string;
   designStyle: DesignStyle;
   colorTheme: string;
   description: string;
