@@ -431,9 +431,14 @@ async function startServer() {
         const ctaListIndo = [taglineIndo, socialIndo, waIndo].filter(Boolean).join(" | ");
         const ctaSectionIndo = ctaListIndo ? `Footer / CTA Section: Menampilkan informasi kontak dan promosi resmi (${ctaListIndo}).` : "Footer: Baris footer elegan dengan placeholder untuk kontak.";
 
+        // Ratio & Platform strings
+        const ratioContextEng = `Aspect Ratio: ${ratioStr} (--ar ${ratioStr}). `;
+        const ratioContextIndo = `Rasio Aspek Gambar: ${ratioStr} (--ar ${ratioStr}). `;
+
         // English Prompts
         let promptEng = `Commercial advertisement product flyer showcase of ${brandIntroEng}'s main product "${cleanProduct}". ` +
           modelContextEng +
+          ratioContextEng +
           pkgSnippetEng +
           `Aesthetic Theme: ${activeStyleEng}. ` +
           `Color Theme: ${cleanColor}. ` +
@@ -443,11 +448,12 @@ async function startServer() {
           `Composition Grid: 80% beautiful product central focus, 20% clean margins for copy text. ` +
           `Top section displays the product "${cleanProduct}". Middle section showcases key ingredients. Bottom section outlines clear benefits. ` +
           `${ctaSectionEng} ` +
-          `Highly detailed, hyper-realistic, photorealistic commercial product photography, ${platformTag}. ${negativePromptEng}`;
+          `Highly detailed, hyper-realistic, photorealistic commercial product photography. ${negativePromptEng} ${platformTag}`;
 
         // Indonesian Prompts
         let promptIndo = `Selebaran iklan komersial produk unggulan dari ${brandIntroIndo} yang menampilkan "${cleanProduct}". ` +
           modelContextIndo +
+          ratioContextIndo +
           pkgSnippetIndo +
           `Tema Estetika: ${activeStyleIndo}. ` +
           `Tema Warna: ${cleanColor}. ` +
@@ -457,12 +463,12 @@ async function startServer() {
           `Aturan Komposisi: 80% fokus utama pada produk di bagian tengah, 20% ruang kosong di pinggir untuk teks iklan. ` +
           `Bagian atas menampilkan produk "${cleanProduct}". Bagian tengah menunjukkan bahan utama/aksi. Bagian bawah menyediakan tempat untuk info keunggulan produk. ` +
           `${ctaSectionIndo} ` +
-          `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}. ${negativePromptIndo}`;
+          `Sangat detail, hiper-realistis, fotografi produk komersial berkualitas tinggi, dioptimalkan untuk ${platform.toUpperCase()}. ${negativePromptIndo} ${platformTag}`;
 
         // Complexity Level modifications
         if (complexity === 'simple') {
-          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${modelContextEng}${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo. ${negativePromptEng}`;
-          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${modelContextIndo}${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi. ${negativePromptIndo}`;
+          promptEng = `Minimalist advertisement for ${brandIntroEng}'s "${cleanProduct}". ${modelContextEng}${ratioContextEng}${pkgSnippetEng}Setup: ${cameraAngleText}, ${lightingText} on ${cleanColor} background. High-quality product photo. ${negativePromptEng} ${platformTag}`;
+          promptIndo = `Iklan minimalis untuk ${brandIntroIndo} "${cleanProduct}". ${modelContextIndo}${ratioContextIndo}${pkgSnippetIndo}Sudut: ${cameraAngleText}, ${lightingText} dengan latar warna ${cleanColor}. Foto produk berkualitas tinggi. ${negativePromptIndo} ${platformTag}`;
         } else if (complexity === 'advanced') {
           promptEng += `, ray tracing, octane render, global illumination, incredibly sharp focus, 8k resolution, cinematic look, depth of field, masterpiece catalog representation`;
           promptIndo += `, ray tracing, octane render, pencahayaan global, fokus sangat tajam, resolusi 8k, tampilan sinematik, efek kedalaman ruang (depth of field), representasi katalog mahakarya`;

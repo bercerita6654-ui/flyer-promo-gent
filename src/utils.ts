@@ -39,13 +39,16 @@ export function generateIndoPrompt(input: PromptInput): string {
   const camObj = CAMERA_ANGLES.find(c => c.value === input.cameraAngle) || CAMERA_ANGLES[0];
   const lightObj = LIGHTINGS.find(l => l.value === input.lighting) || LIGHTINGS[0];
 
-  let arSuffix = `--ar ${input.aspectRatio.replace(':', ':')}`;
-  let arText = `Ukuran: Aspect ratio ${input.aspectRatio} (${arSuffix})`;
+  let platformParam = `--ar ${input.aspectRatio}`;
   if (input.aiPlatform === 'dalle3') {
-    arText = `Ukuran: Gunakan format rasio ${input.aspectRatio}`;
+    platformParam = `Aspect ratio: ${input.aspectRatio}`;
+  } else if (input.aiPlatform === 'stable-diffusion') {
+    platformParam = `--ar ${input.aspectRatio}`;
   } else if (input.aiPlatform === 'google-imagen') {
-    arText = `Ukuran: Rasio aspek gambar ${input.aspectRatio}`;
+    platformParam = `aspect ratio ${input.aspectRatio}`;
   }
+
+  let arText = `Ukuran & Rasio Gambar: ${input.aspectRatio} (${platformParam})`;
 
   const propsText = input.backgroundProps 
     ? `Dekorasi latar tambahan: dilengkapi dengan dekorasi berupa ${input.backgroundProps} yang diatur secara estetis di sekeliling produk.` 
@@ -78,7 +81,7 @@ export function generateIndoPrompt(input: PromptInput): string {
   return `Desain flyer iklan profesional untuk produk "${input.productName}" ${brandText}. ${pkgContext}
 ${modelContext}
 
-${arText}. 
+${arText}
 Komposisi: 80% visual fotorealistik berkualitas tinggi dan 20% ruang teks kosong (negative space) bersih untuk penempatan promo. 
 Layout Utama: Modern grid-based infographic layout (tata letak kotak-panel rapi). 
 Bagian Atas: Menampilkan wujud produk utama "${input.productName}"${pkgDetail} yang terlihat premium, besar, dan sangat detail. 
@@ -91,7 +94,8 @@ Pencahayaan: ${lightObj.labelIndo}.
 ${propsText}
 
 Gaya Visual: ${stylePrompt} ${input.colorTheme ? `Tema palet warna dominan: ${input.colorTheme}.` : ''}
-${negativePromptText}`;
+${negativePromptText}
+${platformParam}`;
 }
 
 export function generateEngPrompt(input: PromptInput): string {
@@ -101,15 +105,16 @@ export function generateEngPrompt(input: PromptInput): string {
   const camObj = CAMERA_ANGLES.find(c => c.value === input.cameraAngle) || CAMERA_ANGLES[0];
   const lightObj = LIGHTINGS.find(l => l.value === input.lighting) || LIGHTINGS[0];
 
-  let arSuffix = `--ar ${input.aspectRatio.replace(':', ':')}`;
-  let arText = `Size: Aspect ratio ${input.aspectRatio} (${arSuffix})`;
+  let platformParam = `--ar ${input.aspectRatio}`;
   if (input.aiPlatform === 'dalle3') {
-    arText = `Size: Portrait ratio ${input.aspectRatio}`;
+    platformParam = `Aspect ratio: ${input.aspectRatio}`;
   } else if (input.aiPlatform === 'stable-diffusion') {
-    arText = `Size: Resolution matched to ratio ${input.aspectRatio}`;
+    platformParam = `--ar ${input.aspectRatio}`;
   } else if (input.aiPlatform === 'google-imagen') {
-    arText = `Size: Aspect ratio ${input.aspectRatio}`;
+    platformParam = `aspect ratio ${input.aspectRatio}`;
   }
+
+  let arText = `Image Aspect Ratio: ${input.aspectRatio} (${platformParam})`;
 
   const propsText = input.backgroundProps 
     ? `Background elements & props: styled with aesthetic ${input.backgroundProps} scattered artistically around the main product.` 
@@ -142,7 +147,7 @@ export function generateEngPrompt(input: PromptInput): string {
   return `Professional advertising flyer design for "${input.productName}" ${brandText}. ${pkgContext}
 ${modelContext}
 
-${arText}. 
+${arText}
 Composition: 80% high-quality photorealistic visual elements and 20% negative space for typography. 
 Main Layout: Modern grid-based infographic layout (clean, organized panels). 
 Top Section: Highlights the primary product "${input.productName}"${pkgDetail} rendered in premium, large-scale, highly detailed closeups. 
@@ -155,5 +160,6 @@ Lighting Scheme: ${lightObj.labelEng}.
 ${propsText}
 
 Visual Style: ${stylePrompt} ${input.colorTheme ? `Color theme: ${input.colorTheme}.` : ''}
-${negativePromptText}`;
+${negativePromptText}
+${platformParam}`;
 }
